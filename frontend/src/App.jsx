@@ -4,7 +4,7 @@ import FullPlayer from './components/FullPlayer';
 import TrackItem from './components/TrackItem';
 import AudioPlayer from './components/AudioPlayer';
 import Header from './components/Header';
-import { useAudioPlayer } from './hooks/useAudioPlayer'; // Наш новый хук
+import { useAudioPlayer } from './hooks/useAudioPlayer'; 
 import './App.css';
 
 // --- Утилиты ---
@@ -69,7 +69,6 @@ function App() {
       setTgUser(user);
       fetchLibrary(user.id);
     } else {
-      const mockUser = { id: 690431190, first_name: "Dev_User" };
       setTgUser(mockUser);
       fetchLibrary(mockUser.id);
     }
