@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Прокси на локалке обычно не нужен, можно даже отключить
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile # Можно использовать другой Dockerfile для dev
+    volumes:
+      - .:/app # Монтируем папку с кодом внутрь контейнера
+    ports:
+      - "8080:8080" # Прямой доступ к API (localhost:8081)
+    environment:
+      - ENV=development
+    # command: air -c .air.toml # Раскомментируй, если используешь air для авторестарта Go
+
+  frontend:
+    build:
+      context: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Чтобы локальные node_modules не затирали контейнерные
+    ports:
+      - "3000:3000" # Прямой доступ к React/Vite (localhost:3000)
+    environment:
+      - CHOKIDAR_USEPOLLING=true # Помогает подхватывать изменения файлов в Docker на Windows/Mac
+
+  db:
+    ports:
+      - "5432:5432" # Чтобы подключаться к базе с твоего компа
+
+  redis:
+    ports:
+      - "6379:6379" # Доступ к Redis для отладки
+
+  asynqmon:
+    ports:
+      - "8082:8080" # Мониторинг очередей на localhost:8082

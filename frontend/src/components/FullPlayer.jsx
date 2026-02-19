@@ -197,17 +197,19 @@ const FullPlayer = ({
                 <p style={styles.artist}>{currentTrack.artist}</p>
               </div>
               <Heart
-                size={32}
-                onClick={() => handleLike(currentTrack)}
-                fill={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "none"}
-                color={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "var(--text-primary)"}
-                style={{ 
-                  cursor: 'pointer',
-                  marginLeft: '10px',
-                  marginRight: '4px',
-                  flexShrink: 0
-                }}
-              />
+  size={32}
+  onClick={() => handleLike(currentTrack)}
+  // Заливка цветом #ff4d4d, если трек в избранном
+  fill={favoriteTrackIds.has(currentTrack.deezer_id) ? "#ff4d4d" : "none"}
+  // Контур цветом #ff4d4d, если трек в избранном, иначе — основной цвет текста
+  color={favoriteTrackIds.has(currentTrack.deezer_id) ? "#ff4d4d" : "var(--text-primary)"}
+  style={{ 
+    cursor: 'pointer',
+    marginLeft: '10px',
+    marginRight: '4px',
+    flexShrink: 0
+  }}
+/>
             </div>
         </div>
 
@@ -361,4 +363,4 @@ const styles = {
   }
 };
 
-export default FullPlayer;
+export default FullPlayer;  
