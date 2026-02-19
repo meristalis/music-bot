@@ -10,7 +10,20 @@ input[type=range]::-webkit-slider-thumb {
   background: #fff; cursor: pointer; -webkit-appearance: none;
   margin-top: -4px;
 }
+:root {
+  --accent-color: #ff6b81; /* Тот самый нежный цвет */
+  --bg-dark: #000000;
+  --surface-dark: #1c1c1e;
+}
 
+/* Теперь в любом месте CSS используйте переменную */
+.active-track-title {
+  color: var(--accent-color);
+}
+
+.play-button {
+  background-color: var(--accent-color);
+}
 /* Анимации и иконки */
 .active-icon { color: #fa2d48 !important; }
 .loader-spin { animation: spin 2s linear infinite; }

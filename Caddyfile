@@ -1,6 +1,6 @@
 # Убираем http:// и IP, ставим домен. 
 # Caddy сам увидит домен и сам включит HTTPS на 443 порту.
-138.124.108.4.nip.io {
+{$DOMAIN} {
 
     reverse_proxy frontend:80
 
