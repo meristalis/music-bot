@@ -11,7 +11,7 @@ DOCKER_BIN=docker
 COMPOSE_BIN=docker compose
 # Файлы конфигурации
 COMPOSE_DEV=$(COMPOSE_BIN)
-COMPOSE_PROD=$(COMPOSE_BIN) -f docker-compose.yml
+COMPOSE_PROD=$(COMPOSE_BIN) -f docker-compose.yaml
 
 .PHONY: help dev dev-logs init stop logs clean db-shell migrate-up migrate-down build-front \
         infra run-back run-front dev-local prod-up prod-down prod-logs prod-deploy
