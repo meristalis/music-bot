@@ -1,9 +1,8 @@
-# Убираем http:// и IP, ставим домен. 
-# Caddy сам увидит домен и сам включит HTTPS на 443 порту.
 {$DOMAIN} {
-
+    # Прокси на фронтенд
     reverse_proxy frontend:80
 
+    # Используем handle, чтобы НЕ отрезать /api из URL
     handle /api/* {
         reverse_proxy backend:8080
     }
