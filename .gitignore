@@ -1,0 +1,48 @@
+# --- Бинарники и сборка Go ---
+main
+__debug_bin
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+
+# --- Зависимости Node.js ---
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Сборка фронтенда ---
+frontend/dist/
+frontend/build/
+.cache/
+
+# --- Секреты (САМОЕ ВАЖНОЕ) ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# --- Данные Docker (если монтируешь папки локально) ---
+pgdata/
+redisdata/
+caddy_data/
+caddy_config/
+
+# --- Логи и временные файлы ---
+*.log
+logs/
+tmp/
+.DS_Store
+Thumbs.db
+
+# --- IDE (VS Code, JetBrains) ---
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # Прокси: разруливает трафик и дает HTTPS
+  gateway:
+    image: caddy:2-alpine
+    container_name: music_gateway
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    networks:
+      - music_net
+
+  # Бэкенд (Go)
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: music_backend
+    restart: always
+    environment:
+      - DB_URL=postgres://postgres:${DB_PASSWORD}@db:5432/tg_music?sslmode=disable
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      - db
+      - redis
+    networks:
+      - music_net
+
+  # Фронтенд (React/Vue/etc)
+  frontend:
+    build: ./frontend
+    container_name: music_frontend
+    restart: always
+    networks:
+      - music_net
+
+  # База данных
+  db:
+    image: postgres:15-alpine
+    container_name: music_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: tg_music
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - music_net
+
+  # Очереди (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: music_redis
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redisdata:/data
+    networks:
+      - music_net
+
+  # Мониторинг Asynq
+  asynqmon:
+    image: hibiken/asynqmon:latest
+    container_name: music_asynqmon
+    restart: always
+    environment:
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      - redis
+    networks:
+      - music_net
+
+networks:
+  music_net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
