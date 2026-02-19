@@ -26,7 +26,7 @@ const formatTime = (seconds) => {
 
 function App() {
   const MOBILE_BREAKPOINT = 780;
-  const backendBaseUrl = "";
+  const backendBaseUrl = "/api";
 
   // --- Состояния интерфейса и данных ---
   const [now, setNow] = useState(Date.now());
