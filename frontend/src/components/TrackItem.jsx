@@ -17,7 +17,6 @@ const TrackItem = ({
   const radius = isFromQueue ? 7 : 9;
   const circumference = 2 * Math.PI * radius;
 
-  // Расчет прогресса выносим в отдельную переменную для чистоты
   const getStrokeOffset = () => {
     if (!pendingData || isDone) return 0;
     const remaining = pendingData.finishTime - now;
@@ -69,7 +68,7 @@ const TrackItem = ({
                   d={isFromQueue ? "M6 10l2 2 4-4" : "M7 12l3 3 7-7"} 
                   fill="none" stroke="#fff" strokeWidth="2.5" 
                   strokeLinecap="round" strokeLinejoin="round"
-                  style={{ transform: 'rotate(90deg)', transformOrigin: 'center' }}
+                  style={{ transformOrigin: 'center' }} // Убрали rotate(90deg)
                 />
               )}
             </svg>
@@ -85,9 +84,9 @@ const TrackItem = ({
         }}>
           {track.title}
         </div>
-        <div style={{ fontSize: isFromQueue ? '12px' : '13px', color: isDone ? '#28a745' : '#8e8e93' }}>
+        <div style={{ fontSize: isFromQueue ? '12px' : '13px', color: '#8e8e93' }}>
           {track.artist} {isPending && (
-            <span style={{color: isDone ? '#28a745' : '#fa2d48'}}>
+            <span style={{color: '#fa2d48'}}>
               • {isDone ? 'готово!' : 'скачиваем...'}
             </span>
           )}

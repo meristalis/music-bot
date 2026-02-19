@@ -49,6 +49,8 @@ dev-logs:
 
 # --- ПРОДАКШЕН (PRODUCTION) ---
 # Используем -f docker-compose.yml, чтобы игнорировать локальный override
+build:
+	$(COMPOSE_PROD) build --no-cache
 
 prod-up:
 	$(COMPOSE_PROD) up -d
