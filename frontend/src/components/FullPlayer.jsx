@@ -61,25 +61,21 @@ const LyricsView = ({ currentTrack, currentTime, audioRef, isActive }) => {
     return lyrics.reduce((acc, line, index) => (currentTime >= line.time ? index : acc), -1);
   }, [currentTime, lyrics, isSynced]);
 
-useEffect(() => {
+  useEffect(() => {
     if (isSynced && activeIndex !== -1 && isActive) {
       const container = scrollRef.current;
-      const activeEl = container?.children[activeIndex + 1]; // +1, так как первым идет пустой распорный div
+      const activeEl = container?.children[activeIndex + 1]; 
       
       if (activeEl) {
         const parentRect = container.getBoundingClientRect();
         const activeRect = activeEl.getBoundingClientRect();
-        
-        
         const offset = activeRect.top - parentRect.top - (parentRect.height / 2) + (activeRect.height / 2);
-        
         container.scrollBy({ top: offset, behavior: 'smooth' });
       }
     }
   }, [activeIndex, isSynced, isActive]);
 
   return (
-    
     <div style={styles.lyricsScroll} ref={scrollRef} className="no-scrollbar">
         <div style={{ height: '5vh', flexShrink: 0 }} />
       {lyrics.map((line, i) => (
@@ -103,7 +99,6 @@ useEffect(() => {
 };
 
 // --- ОСНОВНОЙ ПЛЕЕР ---
-// ... (LyricsView остается без изменений)
 
 const FullPlayer = ({
   isOpen, currentTrack, onClose, isPlaying, togglePlay,
@@ -125,17 +120,15 @@ const FullPlayer = ({
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* Плавные переходы для слоев */
         .visual-layer {
           transition: transform 0.6s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.5s ease;
           position: absolute;
           top: 0; left: 0; right: 0; bottom: 0;
         }
 
-        .lyric-line { transition: all 0.4s ease; cursor: pointer; }
-        .lyric-line.active { color: #fff; text-shadow: 0 0 5px rgba(255,255,255,0.5); }
+        .lyric-line { transition: all 0.4s ease; cursor: pointer; color: var(--text-primary); }
+        .lyric-line.active { color: var(--text-primary); text-shadow: 0 0 10px rgba(255,255,255,0.3); }
 
-        /* Анимация стрелочек */
         .arrow-btn {
           transition: transform 0.2s ease;
           opacity: 0.5;
@@ -153,7 +146,6 @@ const FullPlayer = ({
         <div style={styles.topArea}>
             <div style={styles.visualStack}>
               
-              {/* СЛОЙ ОБЛОЖКИ */}
               <div 
                 className="visual-layer"
                 style={{ 
@@ -172,7 +164,6 @@ const FullPlayer = ({
                 </div>
               </div>
 
-              {/* СЛОЙ ТЕКСТА */}
               <div 
                 className="visual-layer"
                 style={{ 
@@ -200,7 +191,6 @@ const FullPlayer = ({
 
             </div>
 
-            {/* ИНФОРМАЦИЯ О ТРЕКЕ */}
             <div style={styles.trackInfoWrapper}>
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <h2 style={styles.title}>{currentTrack.title}</h2>
@@ -209,19 +199,18 @@ const FullPlayer = ({
               <Heart
                 size={32}
                 onClick={() => handleLike(currentTrack)}
-                fill={favoriteTrackIds.has(currentTrack.deezer_id) ? "#fa2d48" : "none"}
-                color={favoriteTrackIds.has(currentTrack.deezer_id) ? "#fa2d48" : "#fff"}
+                fill={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "none"}
+                color={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "var(--text-primary)"}
                 style={{ 
-      cursor: 'pointer',
-      marginLeft: '10px',
-      marginRight: '4px',
-      flexShrink: 0       // Запрещаем сжимать иконку
-    }}
+                  cursor: 'pointer',
+                  marginLeft: '10px',
+                  marginRight: '4px',
+                  flexShrink: 0
+                }}
               />
             </div>
         </div>
 
-        {/* НИЖНЯЯ ПАНЕЛЬ*/}
         <div style={styles.bottomArea}>
           <div style={styles.progressWrapper}>
             <input
@@ -235,7 +224,7 @@ const FullPlayer = ({
               }}
               style={{
                 ...styles.rangeInput,
-                background: `linear-gradient(to right, #fff ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${(currentTime / (duration || 1)) * 100}%)`
+                background: `linear-gradient(to right, var(--text-primary) ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.1) ${(currentTime / (duration || 1)) * 100}%)`
               }}
             />
             <div style={styles.timeInfo}>
@@ -245,13 +234,13 @@ const FullPlayer = ({
           </div>
 
           <div style={styles.controlsWrapper}>
-            <Shuffle size={24} onClick={() => setIsShuffle(!isShuffle)} style={{ color: isShuffle ? '#fa2d48' : '#fff', cursor: 'pointer' }} />
+            <Shuffle size={24} onClick={() => setIsShuffle(!isShuffle)} style={{ color: isShuffle ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer' }} />
             <SkipBack size={32} fill="currentColor" onClick={handlePrev} style={styles.controlIcon} />
             <div onClick={togglePlay} style={styles.playButton}>
               {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" style={{ marginLeft: '3px' }} />}
             </div>
             <SkipForward size={32} fill="currentColor" onClick={handleNext} style={styles.controlIcon} />
-            <div onClick={toggleRepeat} style={{ color: repeatMode !== 'none' ? '#fa2d48' : '#fff', cursor: 'pointer' }}>
+            <div onClick={toggleRepeat} style={{ color: repeatMode !== 'none' ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer' }}>
               {repeatMode === 'one' ? <Repeat1 size={24} /> : <Repeat size={24} />}
             </div>
           </div>
@@ -264,7 +253,7 @@ const FullPlayer = ({
 const styles = {
   overlay: {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    background: '#000', zIndex: 2000, padding: '20px',
+    background: 'var(--bg-black)', zIndex: 2000, padding: '20px',
     display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideUp 0.3s ease-out'
   },
   backgroundBlur: {
@@ -273,7 +262,7 @@ const styles = {
     filter: 'blur(60px) brightness(0.25)', zIndex: -1
   },
   closeButton: {
-    position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', zIndex: 2001, cursor: 'pointer'
+    position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'var(--text-secondary)', zIndex: 2001, cursor: 'pointer'
   },
   contentContainer: {
     display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: '500px', margin: '0 auto', position: 'relative'
@@ -298,7 +287,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    color: '#fff',
+    color: 'var(--text-primary)',
     background: 'none',
     border: 'none'
   },
@@ -345,31 +334,31 @@ const styles = {
     background: 'transparent',
     zIndex: 10,
   },
-  title: { fontSize: '26px', fontWeight: '800', color: '#fff', margin: '0 0 4px 0' },
-  artist: { fontSize: '18px', color: 'rgba(255,255,255,0.5)', margin: 0 },
+  title: { fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)', margin: '0 0 4px 0' },
+  artist: { fontSize: '18px', color: 'var(--text-secondary)', margin: 0 },
   bottomArea: { padding: '10px 0 20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' },
   progressWrapper: { width: '100%', marginBottom: '30px' },
   rangeInput: { width: '100%', height: '4px', appearance: 'none', borderRadius: '5px', outline: 'none' },
-  timeInfo: { display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '12px', color: 'rgba(255,255,255,0.4)' },
+  timeInfo: { display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '12px', color: 'var(--text-secondary)' },
   controlsWrapper: { display: 'flex', alignItems: 'center', gap: '35px' },
-  playButton: { background: '#fff', color: '#000', borderRadius: '50%', width: '70px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  controlIcon: { color: '#fff', cursor: 'pointer' },
+  playButton: { background: 'var(--text-primary)', color: 'var(--bg-black)', borderRadius: '50%', width: '70px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  controlIcon: { color: 'var(--text-primary)', cursor: 'pointer' },
   lyricsScroll: { 
     height: '100%', width: '100%', overflowY: 'auto',padding: '0 20px 0px 30px',
     maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
     WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)'
   },
   lyricLine: { 
-  marginBottom: '32px', 
-  fontWeight: '900', 
-  lineHeight: '1.3',        // Увеличили с 1.1, чтобы при переносе строки не слипались
-  letterSpacing: '-1px',
-  paddingRight: '40px',     // Прозрачный блок справа (чуть больше для запаса под scale)
-  boxSizing: 'border-box', 
-  display: 'block',
-  wordBreak: 'break-word',  // Разрешаем перенос слов
-  textAlign: 'left'         // Или 'center', если хотите текст по центру
-}
+    marginBottom: '32px', 
+    fontWeight: '900', 
+    lineHeight: '1.3',
+    letterSpacing: '-1px',
+    paddingRight: '40px',
+    boxSizing: 'border-box', 
+    display: 'block',
+    wordBreak: 'break-word',
+    textAlign: 'left'
+  }
 };
 
 export default FullPlayer;
