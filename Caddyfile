@@ -1,24 +1,19 @@
-http://138.124.108.4 {
-    # 1. Фронтенд
-    # Проксируем на 80-й порт контейнера frontend
+# Убираем http:// и IP, ставим домен. 
+# Caddy сам увидит домен и сам включит HTTPS на 443 порту.
+138.124.108.4.nip.io {
+
     reverse_proxy frontend:80
 
-    # 2. Бэкенд (Go)
-    # Все запросы, начинающиеся на /api, уходят в Go-приложение
     handle_path /api/* {
         reverse_proxy backend:8080
     }
 
-    # 3. Мониторинг очередей Asynq
-    # Доступен по адресу http://138.124.108.4/jobs/
     handle_path /jobs/* {
         reverse_proxy asynqmon:8080
     }
 
-    # Сжатие ответов (ускоряет загрузку фронта)
     encode gzip
 
-    # Логи (чтобы видеть ошибки, если что-то отвалится)
     log {
         output file /data/access.log
     }
