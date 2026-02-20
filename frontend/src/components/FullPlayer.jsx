@@ -126,8 +126,11 @@ const FullPlayer = ({
         }
 
         .lyric-line { transition: all 0.4s ease; cursor: pointer; color: var(--text-primary); }
-        .lyric-line.active { color: var(--text-primary); text-shadow: 0 0 10px rgba(255,255,255,0.2); }
-
+        .lyric-line.active { 
+  color: var(--text-primary); 
+  /* Используем переменную из theme.css, которая станет темной в светлой теме */
+  text-shadow: 0 0 15px var(--lyric-shadow); 
+}
         .arrow-btn {
           transition: transform 0.2s ease;
           opacity: 0.6;
@@ -136,7 +139,12 @@ const FullPlayer = ({
         .arrow-btn:hover { transform: scale(1.1); opacity: 1; }
       `}</style>
 
-      <div style={{ ...styles.backgroundBlur, backgroundImage: `url(${currentTrack.cover_url})` }} />
+      <div style={{ 
+  ...styles.backgroundBlur, 
+  backgroundImage: `url(${currentTrack.cover_url})`,
+  // brightness берем из CSS переменной, которую мы добавили в theme.css
+  filter: `blur(60px) brightness(var(--bg-brightness))` 
+}} />
       
       <button onClick={onClose} style={styles.closeButton}>
         <X size={28} />
@@ -226,9 +234,9 @@ const FullPlayer = ({
                 if (audioRef.current) { audioRef.current.currentTime = val; setCurrentTime(val); }
               }}
               style={{
-                ...styles.rangeInput,
-                background: `linear-gradient(to right, var(--text-primary) ${(currentTime / (duration || 1)) * 100}%, rgba(128,128,128,0.2) ${(currentTime / (duration || 1)) * 100}%)`
-              }}
+  ...styles.rangeInput,
+  background: `linear-gradient(to right, var(--text-primary) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
+}}
             />
             <div style={styles.timeInfo}>
               <span>{formatTime(currentTime)}</span>
@@ -266,7 +274,8 @@ const styles = {
   backgroundBlur: {
     position: 'absolute', top: '-10%', left: '-10%', width: '120%', height: '120%',
     backgroundSize: 'cover', backgroundPosition: 'center',
-    filter: 'blur(60px) brightness(0.2)', zIndex: -1
+    zIndex: -1
+    // filter вынесен в инлайн стиль выше
   },
   closeButton: {
     position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'var(--text-secondary)', zIndex: 2001, cursor: 'pointer'
@@ -314,7 +323,8 @@ const styles = {
     aspectRatio: '1/1',
     borderRadius: '16px', 
     objectFit: 'cover',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+    /* Тень обложки тоже адаптируем (темнее в светлой теме) */
+    boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
   },
   lyricsWrapperFull: {
     height: '100%',
@@ -362,9 +372,9 @@ const styles = {
   },
   controlIcon: { color: 'var(--text-primary)', cursor: 'pointer' },
   lyricsScroll: { 
-    height: '100%', width: '100%', overflowY: 'auto',padding: '0 20px 0px 30px',
-    maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
-    WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)'
+    height: '100%', width: '100%', overflowY: 'auto', padding: '0 20px 0px 30px',
+    maskImage: 'var(--player-mask)',
+    WebkitMaskImage: 'var(--player-mask)'
   },
   lyricLine: { 
     marginBottom: '32px', 

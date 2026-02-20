@@ -4,11 +4,16 @@
   --bg-surface: #f4f4f4; 
   --text-color: #1a1a1a;
 
-  /* Динамические соответствия */
   --accent-color: var(--brand-pink);
   --text-primary: var(--text-color);
   --text-secondary: #717171;
   --overlay-bg: rgba(255, 255, 255, 0.95);
+
+  /* Новые переменные для адаптации FullPlayer */
+  --player-mask: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+  --bg-brightness: 0.8; /* Делаем фон светлее для светлой темы */
+  --lyric-shadow: rgba(0, 0, 0, 0.1); /* Темная тень для светлой темы */
+  --progress-bg: rgba(0, 0, 0, 0.1);
 }
 
 [data-theme='dark'] {
@@ -20,20 +25,34 @@
   --text-primary: var(--text-color);
   --text-secondary: #a1a1a1;
   --overlay-bg: rgba(18, 18, 18, 0.98);
+
+  /* Адаптация для темной темы */
+  --bg-brightness: 0.25; /* Затемняем фон сильно */
+  --lyric-shadow: rgba(255, 255, 255, 0.3); /* Белое свечение */
+  --progress-bg: rgba(255, 255, 255, 0.1);
 }
 
-@keyframes download-bounce {
-  0%, 100% { transform: translateY(-2px); opacity: 0.7; }
-  50% { transform: translateY(2px); opacity: 1; }
-}
-
-@keyframes slideUp { 
-  from { transform: translateY(100%); } 
-  to { transform: translateY(0); } 
+@keyframes download-fill {
+  0% {
+    background-position: 0% 100%; /* Цвет внизу, иконка пустая */
+  }
+  50% {
+    background-position: 0% 0%;   /* Цвет полностью залил иконку */
+  }
+  100% {
+    background-position: 0% 100%; /* Снова пустая */
+  }
 }
 
 .animate-download {
-  animation: download-bounce 1.2s infinite ease-in-out;
+  /* Создаем градиент: снизу прозрачный, сверху основной цвет */
+  background: linear-gradient(to bottom, var(--accent-color) 50%, var(--text-secondary) 50%);
+  background-size: 100% 200%; /* Делаем фон в два раза выше контейнера */
+  background-clip: text;      /* Магия: обрезаем фон по форме иконки */
+  -webkit-background-clip: text;
+  color: transparent;         /* Делаем саму иконку прозрачной, чтобы видеть фон */
+  animation: download-fill 2s infinite ease-in-out;
+  display: inline-block;
 }
 
 .no-scrollbar::-webkit-scrollbar { 

@@ -62,16 +62,16 @@ const Header = ({
 
             {/* АНИМИРОВАННАЯ ИКОНКА */}
             {isDownloading && (
-              <div className="animate-download" style={{ display: 'flex' }}>
-                <ArrowDownToLine 
-                  size={22} 
-                  style={{
-                    color: 'var(--accent-color)',
-                    filter: `drop-shadow(0 0 5px var(--accent-color))`
-                  }} 
-                />
-              </div>
-            )}
+  <div className="animate-download" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <ArrowDownToLine 
+      size={22} 
+      /* Убираем inline-color, чтобы работал градиент из CSS */
+      style={{
+        display: 'block'
+      }} 
+    />
+  </div>
+)}
           </div>
         )}
 
