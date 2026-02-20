@@ -12,8 +12,8 @@
   /* Новые переменные для адаптации FullPlayer */
   --player-mask: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
   --bg-brightness: 0.8; /* Делаем фон светлее для светлой темы */
-  --lyric-shadow: rgba(0, 0, 0, 0.1); /* Темная тень для светлой темы */
-  --progress-bg: rgba(0, 0, 0, 0.1);
+  --lyric-shadow: rgba(0, 0, 0, 0.08);; /* Темная тень для светлой темы */
+  --progress-bg: rgba(26, 26, 26, 0.06);
 }
 
 [data-theme='dark'] {
@@ -33,26 +33,28 @@
 }
 
 @keyframes download-fill {
-  0% {
-    background-position: 0% 100%; /* Цвет внизу, иконка пустая */
-  }
-  50% {
-    background-position: 0% 0%;   /* Цвет полностью залил иконку */
-  }
-  100% {
-    background-position: 0% 100%; /* Снова пустая */
-  }
+  0% { background-position: 0% 100%; }   /* Пусто */
+  100% { background-position: 0% 0%; }   /* Полно */
 }
 
 .animate-download {
-  /* Создаем градиент: снизу прозрачный, сверху основной цвет */
-  background: linear-gradient(to bottom, var(--accent-color) 50%, var(--text-secondary) 50%);
-  background-size: 100% 200%; /* Делаем фон в два раза выше контейнера */
-  background-clip: text;      /* Магия: обрезаем фон по форме иконки */
+  /* Нижняя часть (80%) — цвет контура (серый), верхняя часть (20%) — яркий акцент */
+  background: linear-gradient(
+    to bottom, 
+    var(--accent-color) 0%, 
+    var(--accent-color) 50%, 
+    var(--text-secondary) 50%, 
+    var(--text-secondary) 100%
+  );
+  background-size: 100% 200%;
   -webkit-background-clip: text;
-  color: transparent;         /* Делаем саму иконку прозрачной, чтобы видеть фон */
-  animation: download-fill 2s infinite ease-in-out;
-  display: inline-block;
+  background-clip: text;
+  /* Важно: иконка должна быть прозрачной */
+  color: transparent !important; 
+  /* Добавляем свечение всей группе, а не иконке */
+  filter: drop-shadow(0 0 3px var(--accent-color));
+  
+  animation: download-fill 1.5s infinite ease-in-out;
 }
 
 .no-scrollbar::-webkit-scrollbar { 

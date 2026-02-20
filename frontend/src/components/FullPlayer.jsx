@@ -127,10 +127,22 @@ const FullPlayer = ({
 
         .lyric-line { transition: all 0.4s ease; cursor: pointer; color: var(--text-primary); }
         .lyric-line.active { 
-  color: var(--text-primary); 
-  /* Используем переменную из theme.css, которая станет темной в светлой теме */
-  text-shadow: 0 0 15px var(--lyric-shadow); 
-}
+          color: var(--text-primary); 
+          text-shadow: 0 0 15px var(--lyric-shadow); 
+        }
+
+        /* Ползунок прогресса */
+        input[type=range]::-webkit-slider-thumb {
+          appearance: none;
+          height: 14px;
+          width: 14px;
+          border-radius: 50%;
+          background: var(--text-primary);
+          cursor: pointer;
+          border: 2px solid var(--bg-color);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
         .arrow-btn {
           transition: transform 0.2s ease;
           opacity: 0.6;
@@ -139,12 +151,21 @@ const FullPlayer = ({
         .arrow-btn:hover { transform: scale(1.1); opacity: 1; }
       `}</style>
 
+      {/* СЛОЙ 1: Размытая обложка */}
       <div style={{ 
-  ...styles.backgroundBlur, 
-  backgroundImage: `url(${currentTrack.cover_url})`,
-  // brightness берем из CSS переменной, которую мы добавили в theme.css
-  filter: `blur(60px) brightness(var(--bg-brightness))` 
-}} />
+        ...styles.backgroundBlur, 
+        backgroundImage: `url(${currentTrack.cover_url})`,
+        filter: `blur(60px) brightness(var(--bg-brightness))`,
+        opacity: 0.7
+      }} />
+
+      {/* СЛОЙ 2: Адаптивный оверлей (уводит в белый/черный) */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'var(--bg-overlay-color)',
+        zIndex: -1
+      }} />
       
       <button onClick={onClose} style={styles.closeButton}>
         <X size={28} />
@@ -153,7 +174,6 @@ const FullPlayer = ({
       <div style={styles.contentContainer}>
         <div style={styles.topArea}>
             <div style={styles.visualStack}>
-              
               <div 
                 className="visual-layer"
                 style={{ 
@@ -196,7 +216,6 @@ const FullPlayer = ({
                   </div>
                 </div>
               </div>
-
             </div>
 
             <div style={styles.trackInfoWrapper}>
@@ -234,9 +253,9 @@ const FullPlayer = ({
                 if (audioRef.current) { audioRef.current.currentTime = val; setCurrentTime(val); }
               }}
               style={{
-  ...styles.rangeInput,
-  background: `linear-gradient(to right, var(--text-primary) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
-}}
+                ...styles.rangeInput,
+                background: `linear-gradient(to right, var(--text-primary) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
+              }}
             />
             <div style={styles.timeInfo}>
               <span>{formatTime(currentTime)}</span>
@@ -275,7 +294,6 @@ const styles = {
     position: 'absolute', top: '-10%', left: '-10%', width: '120%', height: '120%',
     backgroundSize: 'cover', backgroundPosition: 'center',
     zIndex: -1
-    // filter вынесен в инлайн стиль выше
   },
   closeButton: {
     position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'var(--text-secondary)', zIndex: 2001, cursor: 'pointer'
@@ -284,73 +302,17 @@ const styles = {
     display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: '500px', margin: '0 auto', position: 'relative'
   },
   topArea: { 
-    flex: 1, 
-    display: 'flex',
-    flexDirection: 'column',
-    marginTop: '40px',
-    width: '100%',
-    position: 'relative',
-    overflow: 'hidden'
+    flex: 1, display: 'flex', flexDirection: 'column', marginTop: '40px', width: '100%', position: 'relative', overflow: 'hidden'
   },
-  visualStack: {
-    flex: 1,
-    position: 'relative',
-    width: '100%',
-  },
-  arrowWrapper: {
-    height: '60px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    background: 'none',
-    border: 'none'
-  },
-  coverView: {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  coverWrapper: { 
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: '20px'
-  },
-  coverImg: { 
-    width: '100%', 
-    aspectRatio: '1/1',
-    borderRadius: '16px', 
-    objectFit: 'cover',
-    /* Тень обложки тоже адаптируем (темнее в светлой теме) */
-    boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
-  },
-  lyricsWrapperFull: {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  lyricsHeader: {
-    height: '60px',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  lyricsBody: {
-    flex: 1,
-    padding: '2vh 0',
-    overflow: 'hidden',
-  },
-  trackInfoWrapper: { 
-    width: '100%', 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    padding: '15px 5px',
-    background: 'transparent',
-    zIndex: 10,
-  },
+  visualStack: { flex: 1, position: 'relative', width: '100%' },
+  arrowWrapper: { height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'none', border: 'none' },
+  coverView: { height: '100%', display: 'flex', flexDirection: 'column' },
+  coverWrapper: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '20px' },
+  coverImg: { width: '100%', aspectRatio: '1/1', borderRadius: '16px', objectFit: 'cover', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' },
+  lyricsWrapperFull: { height: '100%', display: 'flex', flexDirection: 'column' },
+  lyricsHeader: { height: '60px', display: 'flex', justifyContent: 'center', alignItems: 'center' },
+  lyricsBody: { flex: 1, padding: '2vh 0', overflow: 'hidden' },
+  trackInfoWrapper: { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 5px', background: 'transparent', zIndex: 10 },
   title: { fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)', margin: '0 0 4px 0' },
   artist: { fontSize: '18px', color: 'var(--text-secondary)', margin: 0 },
   bottomArea: { padding: '10px 0 20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' },
@@ -362,13 +324,9 @@ const styles = {
     background: 'var(--text-primary)', 
     color: 'var(--bg-color)', 
     borderRadius: '50%', 
-    width: '70px', 
-    height: '70px', 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    cursor: 'pointer',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+    width: '70px', height: '70px', 
+    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+    cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
   },
   controlIcon: { color: 'var(--text-primary)', cursor: 'pointer' },
   lyricsScroll: { 
@@ -377,15 +335,8 @@ const styles = {
     WebkitMaskImage: 'var(--player-mask)'
   },
   lyricLine: { 
-    marginBottom: '32px', 
-    fontWeight: '900', 
-    lineHeight: '1.3',
-    letterSpacing: '-1px',
-    paddingRight: '40px',
-    boxSizing: 'border-box', 
-    display: 'block',
-    wordBreak: 'break-word',
-    textAlign: 'left'
+    marginBottom: '32px', fontWeight: '900', lineHeight: '1.3', letterSpacing: '-1px',
+    paddingRight: '40px', boxSizing: 'border-box', display: 'block', wordBreak: 'break-word', textAlign: 'left'
   }
 };
 

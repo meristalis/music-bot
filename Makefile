@@ -77,6 +77,7 @@ prod-logs:
 prod-deploy:
 	$(COMPOSE_PROD) pull  # Подтягиваем обновленные базовые образы
 	$(COMPOSE_PROD) down
+	docker system prune -af
 	$(COMPOSE_PROD) up -d --build --force-recreate --remove-orphans
 	@echo "🚀 Деплой завершен! Проверяю статус контейнеров..."
 	$(COMPOSE_PROD) ps
@@ -105,3 +106,14 @@ stop:
 
 db-shell:
 	$(DOCKER_BIN) exec -it music_db psql -U postgres -d tg_music
+
+
+push:
+	@if [ -z "$(m)" ]; then \
+		echo "Ошибка: укажите сообщение коммита. Пример: make push m='my commit'"; \
+		exit 1; \
+	fi
+	git add .
+	git commit -m "$(m)"
+	git push
+	@echo "✅ Изменения отправлены в репозиторий!"
