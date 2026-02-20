@@ -12,7 +12,6 @@ const TrackItem = ({
   const isPending = !!pendingData;
   const isDone = pendingData?.isDone;
 
-  // Устанавливаем единые размеры для всех типов списков
   const size = 48;
   const ringSize = 24;
   const radius = 9;
@@ -32,7 +31,7 @@ const TrackItem = ({
         display: 'flex', 
         alignItems: 'center', 
         gap: '12px', 
-        padding: '8px 12px', // Увеличили боковые отступы для дыхания
+        padding: '8px 10px 8px 12px', // Увеличили правый отступ внутри контейнера
         borderRadius: '12px', 
         cursor: 'pointer',
         background: isActive ? 'rgba(128, 128, 128, 0.12)' : 'transparent',
@@ -41,7 +40,6 @@ const TrackItem = ({
         overflow: 'hidden'
       }}>
       
-      {/* Инъекция анимации пульсации */}
       <style>{`
         @keyframes pause-pulse {
           0% { transform: scale(1); opacity: 1; }
@@ -63,7 +61,6 @@ const TrackItem = ({
           alt="" 
         />
         
-        {/* Оверлей загрузки */}
         {isPending && (
           <div style={styles.loaderOverlay}>
             <svg width={ringSize} height={ringSize}>
@@ -103,8 +100,7 @@ const TrackItem = ({
           whiteSpace: 'nowrap', 
           overflow: 'hidden', 
           textOverflow: 'ellipsis', 
-          color: isActive ? 'var(--accent-color)' : 'var(--text-primary)',
-          transition: 'color 0.2s ease'
+          color: isActive ? 'var(--accent-color)' : 'var(--text-primary)'
         }}>
           {track.title}
         </div>
@@ -123,15 +119,15 @@ const TrackItem = ({
         </div>
       </div>
 
-      {/* Правая часть: Индикация проигрывания */}
+      {/* Правая часть: Иконка с отступом 10px от края */}
       <div style={{ 
-        width: '32px', 
-        height: '32px',
+        width: '24px', 
+        height: '24px',
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
         flexShrink: 0,
-        marginLeft: '4px'
+        marginRight: '10px' // Тот самый отступ от правого края
       }}>
         {!isPending && isActive && isPlaying && (
           <div style={{ 
