@@ -30,7 +30,8 @@ const TrackItem = ({
       style={{
         display: 'flex', alignItems: 'center', gap: '12px', padding: '8px',
         borderRadius: '8px', cursor: 'pointer',
-        background: isActive ? 'rgba(255,255,255,0.05)' : 'transparent',
+        // Используем полупрозрачный цвет текста для фона активного элемента
+        background: isActive ? 'rgba(128, 128, 128, 0.15)' : 'transparent',
         transition: 'background 0.2s ease'
       }}>
       
@@ -48,13 +49,13 @@ const TrackItem = ({
           <div style={styles.loaderOverlay}>
             <svg width={ringSize} height={ringSize}>
               <circle 
-                stroke={isDone ? "transparent" : "rgba(255,255,255,0.2)"} 
-                strokeWidth="2.5" fill={isDone ? "#fa2d48" : "transparent"} 
+                stroke={isDone ? "transparent" : "rgba(128,128,128,0.3)"} 
+                strokeWidth="2.5" fill={isDone ? "var(--accent-color)" : "transparent"} 
                 r={radius} cx={ringSize/2} cy={ringSize/2} 
               />
               {!isDone ? (
                 <circle 
-                  stroke="#fa2d48" strokeWidth="2.5" fill="transparent" 
+                  stroke="var(--accent-color)" strokeWidth="2.5" fill="transparent" 
                   r={radius} cx={ringSize/2} cy={ringSize/2}
                   style={{
                     strokeDasharray: circumference,
@@ -68,7 +69,7 @@ const TrackItem = ({
                   d={isFromQueue ? "M6 10l2 2 4-4" : "M7 12l3 3 7-7"} 
                   fill="none" stroke="#fff" strokeWidth="2.5" 
                   strokeLinecap="round" strokeLinejoin="round"
-                  style={{ transformOrigin: 'center' }} // Убрали rotate(90deg)
+                  style={{ transformOrigin: 'center' }}
                 />
               )}
             </svg>
@@ -78,15 +79,18 @@ const TrackItem = ({
 
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <div style={{ 
-          fontWeight: '500', fontSize: isFromQueue ? '14px' : '15px', 
+          fontWeight: '600', fontSize: isFromQueue ? '14px' : '15px', 
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', 
-          color: isActive ? '#fa2d48' : '#fff' 
+          color: isActive ? 'var(--accent-color)' : 'var(--text-primary)' 
         }}>
           {track.title}
         </div>
-        <div style={{ fontSize: isFromQueue ? '12px' : '13px', color: '#8e8e93' }}>
+        <div style={{ 
+          fontSize: isFromQueue ? '12px' : '13px', 
+          color: 'var(--text-secondary)' 
+        }}>
           {track.artist} {isPending && (
-            <span style={{color: '#fa2d48'}}>
+            <span style={{ color: 'var(--accent-color)', fontWeight: '500' }}>
               • {isDone ? 'готово!' : 'скачиваем...'}
             </span>
           )}
@@ -94,7 +98,9 @@ const TrackItem = ({
       </div>
 
       {!isPending && isActive && isPlaying && (
-        <div style={{ color: '#fa2d48' }}><Pause size={16} fill="currentColor" /></div>
+        <div style={{ color: 'var(--accent-color)' }}>
+          <Pause size={18} fill="currentColor" />
+        </div>
       )}
     </div>
   );
@@ -104,7 +110,7 @@ const styles = {
   loaderOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
     display: 'flex', alignItems: 'center', justifyContent: 'center', 
-    background: 'rgba(0,0,0,0.4)', borderRadius: '6px', backdropFilter: 'blur(2px)'
+    background: 'rgba(0,0,0,0.5)', borderRadius: '6px', backdropFilter: 'blur(2px)'
   }
 };
 

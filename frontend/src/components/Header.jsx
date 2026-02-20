@@ -8,8 +8,7 @@ const Header = ({
   isSearchOpen, 
   setIsSearchOpen,
   pendingTracks = {}, 
-  downloadQueue = [],
-  accentColor = '#ff8a9a' // Дефолтный нежный цвет, если пропс не пришел
+  downloadQueue = []
 }) => {
   const isDownloading = Object.keys(pendingTracks).length > 0;
   const hasItemsInQueue = downloadQueue.length > 0;
@@ -24,20 +23,19 @@ const Header = ({
               src={tgUser.photo_url} 
               alt="Avatar" 
               style={styles.avatarImage} 
-              // Обработка ошибки загрузки (например, если ссылка протухла)
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           ) : (
             <div style={styles.avatarPlaceholder}>
-              <User size={18} color="#8e8e93" />
+              <User size={18} color="var(--text-secondary)" />
             </div>
           )}
         </div>
         <div>
-          <h2 style={styles.userName}>
+          <h2 style={{ ...styles.userName, color: 'var(--text-primary)' }}>
             {tgUser?.first_name || 'Слушатель'}
           </h2>
-          <p style={styles.userStatus}>
+          <p style={{ ...styles.userStatus, color: isDownloading ? 'var(--accent-color)' : 'var(--text-secondary)' }}>
             {isDownloading ? 'Загрузка треков...' : 'Online'}
           </p>
         </div>
@@ -52,27 +50,27 @@ const Header = ({
             onClick={() => setIsDownloadPanelOpen(!isDownloadPanelOpen)} 
             style={styles.downloadIconWrapper}
           >
-            {/* ФОНОВАЯ ИКОНКА */}
+            {/* ФОНОВАЯ ИКОНКА (тусклая) */}
             <ArrowDownToLine 
               size={22} 
               style={{ 
-                color: '#fff',
-                opacity: isDownloading ? 0.2 : 0.8,
+                color: 'var(--text-primary)',
+                opacity: 0.2,
                 position: 'absolute'
               }} 
             />
 
-            {/* АНИМИРОВАННАЯ ИКОНКА (заполнение) */}
+            {/* АНИМИРОВАННАЯ ИКОНКА */}
             {isDownloading && (
-              <ArrowDownToLine 
-                size={22} 
-                style={{
-                  ...styles.activeDownloadIcon,
-                  color: accentColor,
-                  filter: `drop-shadow(0 0 8px ${accentColor}44)` // 44 - это прозрачность
-                }} 
-                className="animate-pulse-subtle" 
-              />
+              <div className="animate-download" style={{ display: 'flex' }}>
+                <ArrowDownToLine 
+                  size={22} 
+                  style={{
+                    color: 'var(--accent-color)',
+                    filter: `drop-shadow(0 0 5px var(--accent-color))`
+                  }} 
+                />
+              </div>
             )}
           </div>
         )}
@@ -82,7 +80,8 @@ const Header = ({
           onClick={() => setIsSearchOpen(!isSearchOpen)} 
           style={{
             ...styles.searchIconWrapper,
-            color: isSearchOpen ? accentColor : '#fff'
+            color: isSearchOpen ? 'var(--accent-color)' : 'var(--text-primary)',
+            background: isSearchOpen ? 'rgba(128,128,128,0.1)' : 'rgba(128,128,128,0.05)'
           }}
         >
           {isSearchOpen ? <X size={24} /> : <Search size={22} />}
@@ -110,11 +109,11 @@ const styles = {
     height: '40px',
     borderRadius: '50%',
     overflow: 'hidden',
-    background: '#1c1c1e',
+    background: 'var(--bg-surface)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    border: '1px solid rgba(255,255,255,0.1)'
+    border: '1px solid rgba(128,128,128,0.1)'
   },
   avatarImage: {
     width: '100%',
@@ -135,8 +134,8 @@ const styles = {
   userStatus: {
     margin: 0,
     fontSize: '11px',
-    color: '#8e8e93',
-    fontWeight: '400'
+    fontWeight: '400',
+    transition: 'color 0.3s ease'
   },
   actionsSection: {
     display: 'flex',
@@ -149,22 +148,18 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '36px',
-    height: '36px',
-    background: 'rgba(255,255,255,0.05)',
+    width: '38px',
+    height: '38px',
+    background: 'rgba(128,128,128,0.05)',
     borderRadius: '50%'
-  },
-  activeDownloadIcon: {
-    position: 'absolute',
   },
   searchIconWrapper: {
     cursor: 'pointer',
-    width: '36px',
-    height: '36px',
+    width: '38px',
+    height: '38px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'rgba(255,255,255,0.05)',
     borderRadius: '50%',
     transition: 'all 0.2s ease'
   }

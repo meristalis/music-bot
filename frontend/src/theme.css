@@ -20,3 +20,12 @@
   --text-primary: var(--text-color);
   --text-secondary: #a1a1a1;
 }
+
+@keyframes download-bounce {
+  0%, 100% { transform: translateY(-2px); opacity: 0.7; }
+  50% { transform: translateY(2px); opacity: 1; }
+}
+
+.animate-download {
+  animation: download-bounce 1.2s infinite ease-in-out;
+}

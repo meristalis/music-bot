@@ -73,7 +73,6 @@ function App() {
       setTgUser(tg.initDataUnsafe.user);
       fetchLibrary(tg.initDataUnsafe.user.id);
     } else if (savedChatId) {
-      // Для тестов вне TG ставим темную тему по умолчанию
       document.documentElement.setAttribute('data-theme', 'dark');
       const user = { id: savedChatId, first_name: "User " + savedChatId };
       setTgUser(user);
