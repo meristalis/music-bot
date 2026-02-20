@@ -4,10 +4,11 @@
   --bg-surface: #f4f4f4; 
   --text-color: #1a1a1a;
 
-  /* Добавляем то, что ожидает JS компонент */
+  /* Динамические соответствия */
   --accent-color: var(--brand-pink);
   --text-primary: var(--text-color);
-  --text-secondary: #717171; 
+  --text-secondary: #717171;
+  --overlay-bg: rgba(255, 255, 255, 0.95);
 }
 
 [data-theme='dark'] {
@@ -15,10 +16,10 @@
   --bg-surface: #1c1c1e;
   --text-color: #f9fafb;
   
-  /* Обновляем для темной темы */
   --accent-color: #ff8798; 
   --text-primary: var(--text-color);
   --text-secondary: #a1a1a1;
+  --overlay-bg: rgba(18, 18, 18, 0.98);
 }
 
 @keyframes download-bounce {
@@ -26,6 +27,15 @@
   50% { transform: translateY(2px); opacity: 1; }
 }
 
+@keyframes slideUp { 
+  from { transform: translateY(100%); } 
+  to { transform: translateY(0); } 
+}
+
 .animate-download {
   animation: download-bounce 1.2s infinite ease-in-out;
+}
+
+.no-scrollbar::-webkit-scrollbar { 
+  display: none; 
 }

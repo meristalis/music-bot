@@ -62,7 +62,7 @@ prod-logs:
 	$(COMPOSE_PROD) logs -f
 
 prod-deploy:
-	$(COMPOSE_PROD) up -d --build --remove-orphans
+	$(COMPOSE_PROD) up -d --build --no-cache --remove-orphans
 	@echo "Деплой завершен!"
 
 # --- ОБЩИЕ КОМАНДЫ ---
