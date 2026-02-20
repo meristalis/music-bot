@@ -61,9 +61,25 @@ prod-down:
 prod-logs:
 	$(COMPOSE_PROD) logs -f
 
+prod-build-hard:
+	$(COMPOSE_PROD) build --no-cache
+
+prod-up:
+	$(COMPOSE_PROD) up -d
+
+prod-down:
+	$(COMPOSE_PROD) down
+
+prod-logs:
+	$(COMPOSE_PROD) logs -f frontend
+
+# Полный цикл деплоя
 prod-deploy:
-	$(COMPOSE_PROD) up -d --build --no-cache --remove-orphans
-	@echo "Деплой завершен!"
+	$(COMPOSE_PROD) pull  # Подтягиваем обновленные базовые образы
+	$(COMPOSE_PROD) down
+	$(COMPOSE_PROD) up -d --build --force-recreate --remove-orphans
+	@echo "🚀 Деплой завершен! Проверяю статус контейнеров..."
+	$(COMPOSE_PROD) ps
 
 # --- ОБЩИЕ КОМАНДЫ ---
 
