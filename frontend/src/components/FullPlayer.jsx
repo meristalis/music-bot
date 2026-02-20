@@ -107,6 +107,7 @@ const FullPlayer = ({
   repeatMode, toggleRepeat, handleLike, favoriteTrackIds
 }) => {
   const [showLyrics, setShowLyrics] = useState(false);
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
   useEffect(() => { 
     if (!isOpen) setShowLyrics(false); 
@@ -131,7 +132,6 @@ const FullPlayer = ({
           text-shadow: 0 0 15px var(--lyric-shadow); 
         }
 
-        /* Ползунок прогресса */
         input[type=range]::-webkit-slider-thumb {
           appearance: none;
           height: 14px;
@@ -151,21 +151,21 @@ const FullPlayer = ({
         .arrow-btn:hover { transform: scale(1.1); opacity: 1; }
       `}</style>
 
-      {/* СЛОЙ 1: Размытая обложка (в светлой теме прозрачность 0 через CSS) */}
+      {/* СЛОЙ 1: Размытая обложка — только если DARK тема */}
       <div style={{ 
         ...styles.backgroundBlur, 
-        backgroundImage: `url(${currentTrack.cover_url})`,
+        backgroundImage: isDark ? `url(${currentTrack.cover_url})` : 'none',
         filter: `blur(60px) brightness(var(--bg-brightness))`,
-        opacity: 'var(--bg-blur-opacity)'
+        opacity: isDark ? 0.7 : 0
       }} />
 
-      {/* СЛОЙ 2: Адаптивный оверлей (Эффект матового стекла) */}
+      {/* СЛОЙ 2: Адаптивный оверлей (Чистое стекло) */}
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
         background: 'var(--bg-overlay-color)',
-        backdropFilter: 'blur(25px)',
-        WebkitBackdropFilter: 'blur(25px)',
+        backdropFilter: 'blur(30px)',
+        WebkitBackdropFilter: 'blur(30px)',
         zIndex: -1
       }} />
       
@@ -256,7 +256,6 @@ const FullPlayer = ({
               }}
               style={{
                 ...styles.rangeInput,
-                /* Использование accent-color для закрашивания прогресса */
                 background: `linear-gradient(to right, var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
               }}
             />
@@ -311,7 +310,10 @@ const styles = {
   arrowWrapper: { height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'none', border: 'none' },
   coverView: { height: '100%', display: 'flex', flexDirection: 'column' },
   coverWrapper: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '20px' },
-  coverImg: { width: '100%', aspectRatio: '1/1', borderRadius: '16px', objectFit: 'cover', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' },
+  coverImg: { 
+    width: '100%', aspectRatio: '1/1', borderRadius: '16px', objectFit: 'cover', 
+    boxShadow: 'none' // Убрано совсем
+  },
   lyricsWrapperFull: { height: '100%', display: 'flex', flexDirection: 'column' },
   lyricsHeader: { height: '60px', display: 'flex', justifyContent: 'center', alignItems: 'center' },
   lyricsBody: { flex: 1, padding: '2vh 0', overflow: 'hidden' },
