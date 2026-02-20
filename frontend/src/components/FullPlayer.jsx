@@ -151,19 +151,21 @@ const FullPlayer = ({
         .arrow-btn:hover { transform: scale(1.1); opacity: 1; }
       `}</style>
 
-      {/* СЛОЙ 1: Размытая обложка */}
+      {/* СЛОЙ 1: Размытая обложка (в светлой теме прозрачность 0 через CSS) */}
       <div style={{ 
         ...styles.backgroundBlur, 
         backgroundImage: `url(${currentTrack.cover_url})`,
         filter: `blur(60px) brightness(var(--bg-brightness))`,
-        opacity: 0.7
+        opacity: 'var(--bg-blur-opacity)'
       }} />
 
-      {/* СЛОЙ 2: Адаптивный оверлей (уводит в белый/черный) */}
+      {/* СЛОЙ 2: Адаптивный оверлей (Эффект матового стекла) */}
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
         background: 'var(--bg-overlay-color)',
+        backdropFilter: 'blur(25px)',
+        WebkitBackdropFilter: 'blur(25px)',
         zIndex: -1
       }} />
       
@@ -254,7 +256,8 @@ const FullPlayer = ({
               }}
               style={{
                 ...styles.rangeInput,
-                background: `linear-gradient(to right, var(--text-primary) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
+                /* Использование accent-color для закрашивания прогресса */
+                background: `linear-gradient(to right, var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
               }}
             />
             <div style={styles.timeInfo}>

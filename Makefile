@@ -9,12 +9,14 @@ MIG_PATH=migrations
 FRONT_DIR=frontend
 DOCKER_BIN=docker
 COMPOSE_BIN=docker compose
+
 # Файлы конфигурации
 COMPOSE_DEV=$(COMPOSE_BIN)
 COMPOSE_PROD=$(COMPOSE_BIN) -f docker-compose.yaml
 
-.PHONY: help dev dev-logs init stop logs clean db-shell migrate-up migrate-down build-front \
-        infra run-back run-front dev-local prod-up prod-down prod-logs prod-deploy
+.PHONY: help dev dev-logs init stop logs clean db-shell migrate-up migrate-down \
+        infra run-back run-front dev-local prod-up prod-down prod-logs prod-deploy \
+        build prod-build-hard push
 
 # Помощь
 help:
@@ -24,6 +26,7 @@ help:
 	@echo "  make prod-deploy    - Полный цикл деплоя на сервере (Build + Up)"
 	@echo "  make prod-up        - Запуск на сервере (игнорируя override)"
 	@echo "  make stop           - Остановить все"
+	@echo "  make push m='msg'   - Add, commit и push в Git"
 
 # --- ЛОКАЛЬНАЯ РАЗРАБОТКА (БЕЗ DOCKER) ---
 
@@ -48,18 +51,9 @@ dev-logs:
 	$(COMPOSE_DEV) logs -f backend frontend
 
 # --- ПРОДАКШЕН (PRODUCTION) ---
-# Используем -f docker-compose.yml, чтобы игнорировать локальный override
+
 build:
 	$(COMPOSE_PROD) build --no-cache
-
-prod-up:
-	$(COMPOSE_PROD) up -d
-
-prod-down:
-	$(COMPOSE_PROD) down
-
-prod-logs:
-	$(COMPOSE_PROD) logs -f
 
 prod-build-hard:
 	$(COMPOSE_PROD) build --no-cache
@@ -107,10 +101,11 @@ stop:
 db-shell:
 	$(DOCKER_BIN) exec -it music_db psql -U postgres -d tg_music
 
+# --- РАБОТА С GIT ---
 
 push:
 	@if [ -z "$(m)" ]; then \
-		echo "Ошибка: укажите сообщение коммита. Пример: make push m='my commit'"; \
+		echo "Ошибка: укажите сообщение коммита. Пример: make push m='fix: player styles'"; \
 		exit 1; \
 	fi
 	git add .

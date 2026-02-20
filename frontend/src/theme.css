@@ -9,11 +9,15 @@
   --text-secondary: #717171;
   --overlay-bg: rgba(255, 255, 255, 0.95);
 
-  /* Новые переменные для адаптации FullPlayer */
   --player-mask: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
-  --bg-brightness: 0.8; /* Делаем фон светлее для светлой темы */
-  --lyric-shadow: rgba(0, 0, 0, 0.08);; /* Темная тень для светлой темы */
-  --progress-bg: rgba(26, 26, 26, 0.06);
+  --bg-brightness: 1.0; 
+  --lyric-shadow: rgba(0, 0, 0, 0.08);
+  --progress-bg: rgba(0, 0, 0, 0.08);
+
+  /* Скрываем обложку на фоне в светлой теме (0) */
+  --bg-blur-opacity: 0; 
+  /* Цвет оверлея для эффекта матового стекла */
+  --bg-overlay-color: rgba(255, 255, 255, 0.8);
 }
 
 [data-theme='dark'] {
@@ -26,37 +30,11 @@
   --text-secondary: #a1a1a1;
   --overlay-bg: rgba(18, 18, 18, 0.98);
 
-  /* Адаптация для темной темы */
-  --bg-brightness: 0.25; /* Затемняем фон сильно */
-  --lyric-shadow: rgba(255, 255, 255, 0.3); /* Белое свечение */
+  --bg-brightness: 0.35; 
+  --lyric-shadow: rgba(255, 255, 255, 0.3);
   --progress-bg: rgba(255, 255, 255, 0.1);
-}
 
-@keyframes download-fill {
-  0% { background-position: 0% 100%; }   /* Пусто */
-  100% { background-position: 0% 0%; }   /* Полно */
-}
-
-.animate-download {
-  /* Нижняя часть (80%) — цвет контура (серый), верхняя часть (20%) — яркий акцент */
-  background: linear-gradient(
-    to bottom, 
-    var(--accent-color) 0%, 
-    var(--accent-color) 50%, 
-    var(--text-secondary) 50%, 
-    var(--text-secondary) 100%
-  );
-  background-size: 100% 200%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  /* Важно: иконка должна быть прозрачной */
-  color: transparent !important; 
-  /* Добавляем свечение всей группе, а не иконке */
-  filter: drop-shadow(0 0 3px var(--accent-color));
-  
-  animation: download-fill 1.5s infinite ease-in-out;
-}
-
-.no-scrollbar::-webkit-scrollbar { 
-  display: none; 
+  /* Показываем обложку на фоне в темной теме */
+  --bg-blur-opacity: 0.7;
+  --bg-overlay-color: rgba(18, 18, 18, 0.6);
 }
