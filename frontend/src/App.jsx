@@ -6,6 +6,7 @@ import AudioPlayer from './components/AudioPlayer';
 import Header from './components/Header';
 import { useAudioPlayer } from './hooks/useAudioPlayer'; 
 import './App.css';
+import './theme.css';
 
 // --- Утилиты ---
 function useDebounce(value, delay) {
@@ -26,13 +27,13 @@ const formatTime = (seconds) => {
 
 function App() {
   const MOBILE_BREAKPOINT = 780;
-  const backendBaseUrl = "";
+  const backendBaseUrl = ""; // Укажи свой URL, если нужно
 
   // --- Состояния интерфейса и данных ---
   const [now, setNow] = useState(Date.now());
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
   const [tgUser, setTgUser] = useState(null);
-  const [manualChatId, setManualChatId] = useState(''); // Для ввода ID вручную
+  const [manualChatId, setManualChatId] = useState('');
   const [library, setLibrary] = useState([]);
   const [favoriteTrackIds, setFavoriteTrackIds] = useState(new Set());
   
@@ -50,7 +51,7 @@ function App() {
   const [downloadQueue, setDownloadQueue] = useState([]);
   const loadingTimersRef = useRef({});
 
-  // Инициализация плеера
+  // Инициализация плеера через кастомный хук
   const player = useAudioPlayer(library, (track) => handleTrackSelect(track));
 
   useEffect(() => {
@@ -58,19 +59,22 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Telegram Init + Manual Auth Check
+  // Telegram Init + Auth
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     const savedChatId = localStorage.getItem('custom_chat_id');
 
     if (tg && tg.initDataUnsafe?.user) {
       tg.ready();
-      tg.setHeaderColor('#1c1c1e');
-      tg.setBackgroundColor('#000000');
-      const user = tg.initDataUnsafe.user;
-      setTgUser(user);
-      fetchLibrary(user.id);
+      // Устанавливаем тему в зависимости от настроек TG
+      const theme = tg.colorScheme || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      
+      setTgUser(tg.initDataUnsafe.user);
+      fetchLibrary(tg.initDataUnsafe.user.id);
     } else if (savedChatId) {
+      // Для тестов вне TG ставим темную тему по умолчанию
+      document.documentElement.setAttribute('data-theme', 'dark');
       const user = { id: savedChatId, first_name: "User " + savedChatId };
       setTgUser(user);
       fetchLibrary(savedChatId);
@@ -108,7 +112,7 @@ function App() {
   // Search Logic
   useEffect(() => {
     const cleanQuery = debouncedSearch.trim();
-    if (cleanQuery) {
+    if (cleanQuery.length > 1) {
       setIsSearching(true);
       axios.get(`${backendBaseUrl}/api/search/deezer?q=${encodeURIComponent(cleanQuery)}`)
         .then(res => {
@@ -157,7 +161,7 @@ function App() {
     await requestTrack(track);
   }, [player, pendingTracks]);
 
- const requestTrack = async (track, isRetry = false) => {
+  const requestTrack = async (track, isRetry = false) => {
     const trackId = track.deezer_id;
     try {
       const response = await axios.post(`${backendBaseUrl}/api/tracks/play`, track);
@@ -224,12 +228,11 @@ function App() {
     }
   }, [isFullPlayerOpen]);
 
-  // Если пользователь не определен (ни ТГ, ни сохраненного ID)
   if (!tgUser) {
     return (
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: '#000', color: '#fff', padding: '20px', textAlign: 'center'
+        height: '100vh', background: 'var(--bg-color)', color: 'var(--text-color)', padding: '20px', textAlign: 'center'
       }}>
         <h3 style={{ marginBottom: '20px' }}>Вход в систему</h3>
         <input 
@@ -238,14 +241,14 @@ function App() {
           value={manualChatId}
           onChange={(e) => setManualChatId(e.target.value)}
           style={{
-            background: '#1c1c1e', border: 'none', borderRadius: '10px', padding: '12px',
-            color: '#fff', fontSize: '16px', width: '100%', maxWidth: '300px', marginBottom: '15px'
+            background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px',
+            color: 'var(--text-color)', fontSize: '16px', width: '100%', maxWidth: '300px', marginBottom: '15px'
           }}
         />
         <button 
           onClick={handleAuth}
           style={{
-            background: '#fa2d48', border: 'none', borderRadius: '10px', padding: '12px 30px',
+            background: 'var(--accent-color)', border: 'none', borderRadius: '10px', padding: '12px 30px',
             color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer'
           }}
         >
@@ -259,7 +262,7 @@ function App() {
     <div className="app-container" style={{
       padding: '16px', paddingBottom: player.currentTrack ? '140px' : '20px',
       maxWidth: '600px', margin: '0 auto', minHeight: '100vh',
-      background: '#000', color: '#fff',
+      background: 'var(--bg-color)', color: 'var(--text-color)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
     }}>
       
@@ -276,28 +279,23 @@ function App() {
      {isSearchOpen && (
       <div style={{ marginBottom: '20px', transition: 'all 0.3s ease' }}>
         <div style={{
-          display: 'flex', alignItems: 'center', background: '#1c1c1e',
-          borderRadius: '10px', padding: '8px 12px', height: '36px'
+          display: 'flex', alignItems: 'center', background: 'var(--bg-surface)',
+          borderRadius: '10px', padding: '8px 12px', height: '40px'
         }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}>
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
 
           <input
-            autoFocus type="text" placeholder="Поиск" value={searchQuery}
+            autoFocus type="text" placeholder="Поиск музыки" value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', background: 'transparent', color: '#fff', fontSize: '17px', border: 'none', outline: 'none', padding: '0', caretColor: '#007aff' }}
+            style={{ width: '100%', background: 'transparent', color: 'var(--text-color)', fontSize: '17px', border: 'none', outline: 'none', padding: '0' }}
           />
 
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} style={{ background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: '8px', padding: '4px', borderRadius: '6px' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
+            <button onClick={() => setSearchQuery('')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+              ✕
             </button>
           )}
         </div>
@@ -308,7 +306,7 @@ function App() {
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Загрузки</h3>
-            <span onClick={() => setDownloadQueue([])} style={{ color: '#fa2d48', fontSize: '15px', fontWeight: '500' }}>Очистить</span>
+            <span onClick={() => setDownloadQueue([])} style={{ color: 'var(--accent-color)', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}>Очистить</span>
           </div>
           {(downloadQueue || []).map(track => (
             <TrackItem 
@@ -334,7 +332,7 @@ function App() {
           />
         ))}
         {!isSearchOpen && library.length === 0 && (
-          <p style={{ color: '#8e8e93', textAlign: 'center', marginTop: '40px' }}>Ваша медиатека пуста</p>
+          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '40px' }}>Ваша медиатека пуста</p>
         )}
       </div>
 

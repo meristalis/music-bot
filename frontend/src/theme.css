@@ -1,14 +1,22 @@
 :root {
   --brand-pink: #ff6b81;
-  --accent: var(--brand-pink);
   --bg-color: #ffffff;
   --bg-surface: #f4f4f4; 
   --text-color: #1a1a1a;
+
+  /* Добавляем то, что ожидает JS компонент */
+  --accent-color: var(--brand-pink);
+  --text-primary: var(--text-color);
+  --text-secondary: #717171; 
 }
 
 [data-theme='dark'] {
   --bg-color: #121212;
   --bg-surface: #1c1c1e;
   --text-color: #f9fafb;
-  --accent: #ff8798; 
+  
+  /* Обновляем для темной темы */
+  --accent-color: #ff8798; 
+  --text-primary: var(--text-color);
+  --text-secondary: #a1a1a1;
 }
