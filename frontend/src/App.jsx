@@ -242,28 +242,38 @@ useEffect(() => {
     }
   }, [debouncedSearch, backendBaseUrl]);
 
-  const handleLike = async (track) => {
+ const handleLike = async (track) => {
     if (!tgUser || !track) return;
+    
     const isLiked = favoriteTrackIds.has(track.deezer_id);
+    
+    // Оптимистичное обновление UI
     setFavoriteTrackIds(prev => {
-      const next = new Set(prev);
-      if (isLiked) next.delete(track.deezer_id);
-      else next.add(track.deezer_id);
-      return next;
+        const next = new Set(prev);
+        if (isLiked) next.delete(track.deezer_id);
+        else next.add(track.deezer_id);
+        return next;
     });
 
     try {
-      await axios.post(`${backendBaseUrl}/api/tracks/${isLiked ? 'unlike' : 'like'}`, {
-        user_id: tgUser.id,
-        deezer_id: track.deezer_id
-      });
-      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
+        await axios.post(`${backendBaseUrl}/api/tracks/${isLiked ? 'unlike' : 'like'}`, {
+            // Оберни в Number(), чтобы убрать кавычки в JSON
+            user_id: Number(tgUser.id), 
+            deezer_id: Number(track.deezer_id),
+            // Добавь эти поля, так как они есть в твоей Go-структуре
+            title: track.title || "",
+            artist: track.artist?.name || track.artist || "",
+            cover_url: track.album?.cover_big || track.cover_url || ""
+        });
+        
+        window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
     } catch (err) {
-      console.error(err);
+        console.error("Ошибка при лайке:", err.response?.data || err.message);
+        // Тут лучше откатить состояние setFavoriteTrackIds назад, если запрос упал
     } finally {
-      fetchLibrary(tgUser.id);
+        fetchLibrary(tgUser.id);
     }
-  };
+};
 
   const handleTrackSelect = useCallback(async (track) => {
     if (player.currentTrack?.deezer_id === track.deezer_id && player.currentTrack.play_link) {

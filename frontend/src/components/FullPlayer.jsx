@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Heart, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Repeat1, ChevronUp, ChevronDown, Volume2, Share2 } from 'lucide-react';
+import { X, Heart, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Repeat1, ChevronUp, ChevronDown, Volume2, Share } from 'lucide-react';
 
 // --- КОМПОНЕНТ ДЛЯ ТЕКСТА С КЭШИРОВАНИЕМ ---
 const LyricsView = ({ currentTrack, currentTime, audioRef, isActive }) => {
@@ -110,14 +110,14 @@ const FullPlayer = ({
   const [volume, setVolume] = useState(1);
   const [showVolumeBar, setShowVolumeBar] = useState(false);
   const volumeTimerRef = useRef(null);
-  const volumeContainerRef = useRef(null); // Реф для отслеживания клика вне области
+  const volumeContainerRef = useRef(null);
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const lastVolumeUpdateRef = useRef(0);
 
   useEffect(() => { 
     if (!isOpen) setShowLyrics(false); 
   }, [isOpen, currentTrack]);
 
-  // Обработка закрытия громкости при клике вне её области
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showVolumeBar && volumeContainerRef.current && !volumeContainerRef.current.contains(event.target)) {
@@ -128,31 +128,22 @@ const FullPlayer = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showVolumeBar]);
 
-  // Обработка громкости
-  // Добавь реф в начало компонента FullPlayer
-const lastVolumeUpdateRef = useRef(0);
-
-const handleVolumeChange = (e) => {
-  const newVol = parseFloat(e.target.value);
-  const now = Date.now();
-  
-  // Обновляем аудио не чаще чем раз в 50мс
-  if (now - lastVolumeUpdateRef.current > 50) {
+  const handleVolumeChange = (e) => {
+    const newVol = parseFloat(e.target.value);
+    const now = Date.now();
     setVolume(newVol);
-    if (audioRef.current) {
-      audioRef.current.volume = newVol;
+    if (now - lastVolumeUpdateRef.current > 50) {
+      if (audioRef.current) {
+        audioRef.current.volume = newVol;
+      }
+      lastVolumeUpdateRef.current = now;
     }
-    lastVolumeUpdateRef.current = now;
-  } else {
-    // Состояние ползунка (визуал) обновляем всегда для плавности
-    setVolume(newVol);
-  }
-  resetVolumeTimer();
-};
+    resetVolumeTimer();
+  };
 
   const resetVolumeTimer = () => {
     if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
-    volumeTimerRef.current = setTimeout(() => setShowVolumeBar(false), 5000); // 5 сек для удобства
+    volumeTimerRef.current = setTimeout(() => setShowVolumeBar(false), 5000);
   };
 
   const toggleVolumeBar = (e) => {
@@ -161,18 +152,13 @@ const handleVolumeChange = (e) => {
     if (!showVolumeBar) resetVolumeTimer();
   };
 
-  // Поделиться треком в Telegram
-const handleShare = async () => {
-    // Безопасно берем объект WebApp
+  const handleShare = async (e) => {
+    e.stopPropagation();
     const tg = window.Telegram?.WebApp;
-    
-    // Проверяем платформу. Если мы в ТГ, там будет 'android', 'ios', 'tdesktop' и т.д.
     const isTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
-    
     const botUsername = 'music_player_vufik_bot';
     const appShortName = 'play'; 
     
-    // Формируем ссылку
     const shareUrl = isTelegram 
         ? `https://t.me/${botUsername}/${appShortName}?startapp=${currentTrack.deezer_id}`
         : `${window.location.origin}${window.location.pathname}?track=${currentTrack.deezer_id}`;
@@ -180,23 +166,13 @@ const handleShare = async () => {
     const shareText = `Послушай этот трек: ${currentTrack.artist} - ${currentTrack.title}`;
 
     if (isTelegram) {
-        // Нативный шаринг внутри Telegram
         const tgLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
         tg.openTelegramLink(tgLink);
-        
-        // Вибрация — важная мелочь для "нативности"
-        if (tg.HapticFeedback) {
-            tg.HapticFeedback.impactOccurred('medium');
-        }
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
     } else {
-        // Браузерный вариант
         if (navigator.share) {
             try {
-                await navigator.share({
-                    title: currentTrack.title,
-                    text: shareText,
-                    url: shareUrl,
-                });
+                await navigator.share({ title: currentTrack.title, text: shareText, url: shareUrl });
             } catch (err) { console.log("Отмена"); }
         } else {
             navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
@@ -204,6 +180,7 @@ const handleShare = async () => {
         }
     }
 };
+
   if (!isOpen || !currentTrack) return null;
 
   const isLiked = favoriteTrackIds.has(currentTrack.deezer_id);
@@ -212,7 +189,7 @@ const handleShare = async () => {
     <div style={styles.overlay}>
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         
         .visual-layer {
           transition: transform 0.6s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.5s ease;
@@ -228,28 +205,29 @@ const handleShare = async () => {
           text-shadow: 0 0 15px var(--lyric-shadow); 
         }
 
-        .arrow-btn {
+        .header-btn {
           color: var(--text-primary);
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+          opacity: 0.8;
+          cursor: pointer;
+          transition: transform 0.2s ease, opacity 0.2s ease;
         }
+        .header-btn:active { transform: scale(0.9); }
 
-        /* iOS Volume Slider Styles */
         .ios-volume-popover {
           position: absolute;
-          bottom: 60px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(255, 255, 255, 0.2);
+          top: 45px;
+          left: 0;
+          background: rgba(255, 255, 255, 0.25);
           backdrop-filter: blur(25px);
           -webkit-backdrop-filter: blur(25px);
-          width: 42px;
-          height: 160px;
-          border-radius: 14px;
+          width: 36px;
+          height: 140px;
+          border-radius: 10px;
           overflow: hidden;
-          animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          animation: slideDown 0.2s ease-out;
           z-index: 100;
           box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-          border: 1px solid rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.2);
         }
 
         .ios-volume-track {
@@ -270,85 +248,108 @@ const handleShare = async () => {
           position: absolute;
           top: 0;
           left: 0;
-          width: 160px; /* Высота контейнера */
-          height: 42px; /* Ширина контейнера */
+          width: 140px;
+          height: 36px;
           appearance: none;
           -webkit-appearance: none;
           background: transparent;
-          transform: rotate(-90deg) translateX(-160px);
+          transform: rotate(-90deg) translateX(-140px);
           transform-origin: top left;
           cursor: pointer;
           margin: 0;
           z-index: 5;
         }
 
-        .ios-volume-input::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 42px; /* Ширина контейнера громкости */
-  height: 42px;
-  background: transparent;
-  border: none; /* Убираем возможные рамки */
-  cursor: pointer;
-}
-  .ios-volume-input::-moz-range-thumb {
-  width: 42px;
-  height: 42px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-}
-  .ios-volume-input:focus {
-  outline: none;
-}
-
-        /* Основной прогресс-бар трека */
-        .track-slider::-webkit-slider-thumb {
+        .track-slider {
+          -webkit-appearance: none;
           appearance: none;
-          height: 14px;
-          width: 14px;
-          border-radius: 50%;
-          background: var(--text-primary);
+          width: 100%;
+          height: 4px;
+          border-radius: 2px;
+          background: var(--progress-bg);
           cursor: pointer;
-          border: 2px solid var(--bg-color);
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          transition: height 0.2s ease;
+        }
+
+        .track-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          height: 12px;
+          width: 12px;
+          border-radius: 50%;
+          background: #fff;
+          border: 2px solid var(--accent-color);
+          box-shadow: 0 0 10px rgba(0,0,0,0.2);
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .ios-volume-popover, .ios-volume-input {
-  touch-action: none; /* Запрещает системе обрабатывать жесты внутри этой области */
-}
+        
+        .icon-center {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          outline: none !important;
+          -webkit-tap-highlight-color: transparent;
+        }
       `}</style>
 
-      {/* СЛОЙ 1: Фон */}
+      {/* ФОН */}
       <div style={{ 
         ...styles.backgroundBlur, 
         backgroundImage: `url(${currentTrack.cover_url})`,
-        filter: `blur(80px) brightness(${isDark ? '0.6' : '1.2'}) saturate(1.5)`,
-        opacity: 0.8,
+        filter: `blur(80px) brightness(${isDark ? '0.6' : '1.0'}) saturate(3.5)`,
+        opacity: 1,
         animation: 'fadeIn 1s ease'
       }} />
 
-      {/* СЛОЙ 2: Оверлей */}
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
         background: isDark 
             ? 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%)' 
-            : 'linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.7) 100%)',
-        backdropFilter: 'blur(40px)',
-        WebkitBackdropFilter: 'blur(40px)',
+            : 'linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.6) 100%)',
+        backdropFilter: 'blur(30px)',
+        WebkitBackdropFilter: 'blur(30px)',
         zIndex: -1
       }} />
       
-      <button onClick={onClose} style={styles.closeButton}>
-        <X size={28} />
-      </button>
+      {/* ВЕРХНЯЯ ПАНЕЛЬ С КНОПКАМИ (Громкость, Текст, Закрыть) */}
+      <div style={styles.headerRow}>
+        <div ref={volumeContainerRef} style={{ position: 'relative' }} className="icon-center">
+            <Volume2 
+                size={28} 
+                onClick={toggleVolumeBar}
+                className="header-btn"
+                style={{ opacity: showVolumeBar ? 1 : 0.7 }} 
+            />
+            {showVolumeBar && (
+                <div className="ios-volume-popover">
+                    <div className="ios-volume-track">
+                        <div className="ios-volume-fill" style={{ height: `${volume * 100}%` }} />
+                        <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange} className="ios-volume-input" />
+                    </div>
+                </div>
+            )}
+        </div>
+
+        {/* НОВАЯ КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕКСТА */}
+        <div className="icon-center" onClick={() => setShowLyrics(!showLyrics)}>
+             {showLyrics ? (
+                 <ChevronDown size={36} className="header-btn" />
+             ) : (
+                 <ChevronUp size={36} className="header-btn" />
+             )}
+        </div>
+
+        <button onClick={onClose} style={styles.closeButton} className="icon-center">
+            <X size={32} className="header-btn" />
+        </button>
+      </div>
 
       <div style={styles.contentContainer}>
         <div style={styles.topArea}>
             <div style={styles.visualStack}>
-              {/* Слой с ОБЛОЖКОЙ */}
+              {/* СЛОЙ ОБЛОЖКИ */}
               <div 
                 className="visual-layer"
                 style={{ 
@@ -358,15 +359,11 @@ const handleShare = async () => {
                 }}
               >
                 <div style={styles.coverView}>
-                  <div onClick={() => setShowLyrics(true)} style={styles.arrowWrapper}>
-                    <ChevronUp size={42} className="arrow-btn" />
-                  </div>
-                  
                   <div style={styles.coverContainer}>
                      <div style={styles.coverResponsiveBox}>
                         <img 
                             src={currentTrack.cover_url} 
-                            style={{...styles.coverImg, position: 'absolute', filter: 'blur(30px) opacity(0.3)', transform: 'translateY(10px) scale(0.9)'}} 
+                            style={{...styles.coverImg, position: 'absolute', filter: 'blur(40px) opacity(0.5)', transform: 'translateY(15px) scale(0.95)'}} 
                             alt="" 
                         />
                         <img 
@@ -374,26 +371,24 @@ const handleShare = async () => {
                             style={styles.coverImg} 
                             alt={currentTrack.title} 
                         />
+                        <button onClick={handleShare} style={styles.shareOnCover} className="icon-center">
+                            <Share size={20} style={{ transform: 'scaleX(-1)' }} />
+                        </button>
                      </div>
                   </div>
                 </div>
               </div>
 
-              {/* Слой с ТЕКСТОМ */}
+              {/* СЛОЙ ТЕКСТА */}
               <div 
                 className="visual-layer"
                 style={{ 
-                  transform: showLyrics ? 'translateY(0)' : 'translateY(100%)',
+                  transform: showLyrics ? 'translateY(0)' : 'translateY(110%)',
                   opacity: showLyrics ? 1 : 0,
                   pointerEvents: showLyrics ? 'auto' : 'none'
                 }}
               >
                 <div style={styles.lyricsWrapperFull}>
-                  <div style={styles.lyricsHeader}>
-                    <button onClick={() => setShowLyrics(false)} style={styles.arrowWrapperLyrics}>
-                      <ChevronDown size={42} className="arrow-btn" />
-                    </button>
-                  </div>
                   <div style={styles.lyricsBody}>
                     <LyricsView 
                       currentTrack={currentTrack} 
@@ -406,29 +401,29 @@ const handleShare = async () => {
               </div>
             </div>
 
-            {/* ИНФО О ТРЕКЕ */}
             <div style={styles.trackInfoWrapper}>
-              <div style={{ flex: 1, overflow: 'hidden', paddingRight: '10px' }}>
+              <div style={{ flex: 1, overflow: 'hidden', paddingRight: '15px' }}>
                 <h2 style={styles.title}>{currentTrack.title}</h2>
                 <p style={styles.artist}>{currentTrack.artist}</p>
               </div>
-              <Heart
-                size={32}
-                onClick={() => handleLike(currentTrack)}
-                fill={isLiked ? "var(--accent-color)" : "none"}
-                stroke={isLiked ? "var(--accent-color)" : "var(--text-primary)"}
-                strokeWidth={2}
-                style={{ 
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  opacity: isLiked ? 1 : 0.7,
-                  transition: 'all 0.3s ease'
-                }}
-              />
+              <div className="icon-center" style={{ width: 42, height: 42 }}>
+                <Heart
+                  size={32}
+                  onClick={() => handleLike(currentTrack)}
+                  fill={isLiked ? "var(--accent-color)" : "none"}
+                  stroke={isLiked ? "var(--accent-color)" : "var(--text-primary)"}
+                  strokeWidth={2}
+                  style={{ 
+                    cursor: 'pointer',
+                    opacity: isLiked ? 1 : 0.8,
+                    transition: 'all 0.3s ease',
+                    display: 'block'
+                  }}
+                />
+              </div>
             </div>
         </div>
 
-        {/* НИЖНЯЯ ПАНЕЛЬ */}
         <div style={styles.bottomArea}>
           <div style={styles.progressWrapper}>
             <input
@@ -454,69 +449,31 @@ const handleShare = async () => {
 
           <div style={styles.mainControlsRow}>
             <div style={styles.controlsWrapper}>
-              
-              {/* ГРОМКОСТЬ В СТИЛЕ IOS */}
-              <div 
-                ref={volumeContainerRef}
-                style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
-              >
-                {showVolumeBar && (
-                  <div className="ios-volume-popover">
-                    <div className="ios-volume-track">
-                      <div className="ios-volume-fill" style={{ height: `${volume * 100}%` }} />
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="1" 
-                        step="0.01" 
-                        value={volume} 
-                        onChange={handleVolumeChange}
-                        className="ios-volume-input"
-                      />
-                    </div>
-                  </div>
-                )}
-                <Volume2 
-                  size={24} 
-                  onClick={toggleVolumeBar}
-                  style={{ 
-                    ...styles.controlIcon, 
-                    color: showVolumeBar ? 'var(--accent-color)' : 'var(--text-primary)',
-                    opacity: volume > 0 ? 0.8 : 0.3,
-                    transition: 'all 0.2s ease',
-                    transform: showVolumeBar ? 'scale(1.1)' : 'scale(1)'
-                  }} 
+              <div className="icon-center" style={styles.sideControlBox}>
+                <Shuffle 
+                  size="26px" 
+                  onClick={() => setIsShuffle(!isShuffle)} 
+                  style={{ color: isShuffle ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer', opacity: isShuffle ? 1 : 0.6 }} 
                 />
               </div>
-
-              <Shuffle 
-                size={22} 
-                onClick={() => setIsShuffle(!isShuffle)} 
-                style={{ color: isShuffle ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer', opacity: isShuffle ? 1 : 0.6 }} 
-              />
               
-              <SkipBack size={32} fill="currentColor" onClick={handlePrev} style={styles.controlIcon} />
-              
-              <div 
-                  onClick={togglePlay} 
-                  style={styles.playButton}
-                  onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-                  onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                  {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" style={{ marginLeft: '4px' }} />}
+              <div className="icon-center" style={styles.stepControlBox}>
+                <SkipBack size="45px" fill="currentColor" onClick={handlePrev} style={styles.controlIcon} />
               </div>
               
-              <SkipForward size={32} fill="currentColor" onClick={handleNext} style={styles.controlIcon} />
-              
-              <div onClick={toggleRepeat} style={{ color: repeatMode !== 'none' ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer', opacity: repeatMode !== 'none' ? 1 : 0.6 }}>
-                {repeatMode === 'one' ? <Repeat1 size={22} /> : <Repeat size={22} />}
+              <div className="icon-center" style={styles.playControlBox}>
+                <div onClick={togglePlay} style={styles.playButtonRaw} className="icon-center">
+                    {isPlaying ? <Pause size="80" fill="currentColor" stroke="none" /> : <Play size="80" fill="currentColor" stroke="none" />}
+                </div>
               </div>
-
-              <Share2 
-                size={22} 
-                onClick={handleShare}
-                style={{ ...styles.controlIcon, opacity: 0.6 }} 
-              />
+              
+              <div className="icon-center" style={styles.stepControlBox}>
+                <SkipForward size="45px" fill="currentColor" onClick={handleNext} style={styles.controlIcon} />
+              </div>
+              
+              <div className="icon-center" onClick={toggleRepeat} style={{ ...styles.sideControlBox, color: repeatMode !== 'none' ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer', opacity: repeatMode !== 'none' ? 1 : 0.6 }}>
+                {repeatMode === 'one' ? <Repeat1 size="28px" /> : <Repeat size="28px" />}
+              </div>
             </div>
           </div>
         </div>
@@ -528,21 +485,24 @@ const handleShare = async () => {
 const styles = {
   overlay: {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    background: 'var(--bg-color)', zIndex: 2000, padding: '20px',
+    background: 'var(--bg-color)', zIndex: 2000, padding: '1.5vh 20px',
     display: 'flex', flexDirection: 'column', overflow: 'hidden'
   },
+  headerRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 2001, padding: '15px 10px',
+  },
   backgroundBlur: {
-    position: 'absolute', top: '-20%', left: '-20%', width: '140%', height: '140%',
+    position: 'absolute', top: '-15%', left: '-15%', width: '130%', height: '130%',
     backgroundSize: 'cover', backgroundPosition: 'center', zIndex: -2
   },
   closeButton: {
-    position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'var(--text-secondary)', zIndex: 2001, cursor: 'pointer'
+    background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', outline: 'none',
   },
   contentContainer: {
-    display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: '500px', margin: '0 auto', position: 'relative'
+    display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: '500px', margin: '0 auto', position: 'relative',padding: '15px 10px'
   },
   topArea: { 
-    flex: 1, display: 'flex', flexDirection: 'column', marginTop: '10px', width: '100%', minHeight: 0
+    flex: 1, display: 'flex', flexDirection: 'column', width: '100%', minHeight: 0,gap: '20px'
   },
   visualStack: { 
     flex: 1, position: 'relative', width: '100%', minHeight: 0 
@@ -550,78 +510,54 @@ const styles = {
   coverView: { 
     height: '100%', display: 'flex', flexDirection: 'column', position: 'relative'
   },
-  arrowWrapper: { 
-    position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-    height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-    cursor: 'pointer', background: 'none', border: 'none', zIndex: 10
-  },
-  arrowWrapperLyrics: {
-    height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'none', border: 'none', flexShrink: 0
-  },
   coverContainer: {
-    flex: 10,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 0,
-    width: '100%',
-    padding: '40px 0 20px 0', 
+    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0', minHeight: 0
   },
   coverResponsiveBox: {
-    width: '100%', 
-    maxWidth: '85vw', 
-    aspectRatio: '1/1',
-    maxHeight: '100%', 
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: '100%', maxWidth: '85vw', aspectRatio: '1/1', maxHeight: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   coverImg: { 
-    width: '100%', 
-    height: '100%',
-    borderRadius: '16px', 
-    objectFit: 'cover', 
-    boxShadow: '0 10px 30px rgba(0,0,0,0.3)', 
+    width: '100%', height: '100%', borderRadius: '24px', objectFit: 'cover', boxShadow: '0 20px 60px rgba(0,0,0,0.45)', 
+  },
+  shareOnCover: {
+    position: 'absolute', top: '15px', right: '15px', background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(10px)', border: 'none', color: '#fff', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', zIndex: 5, outline: 'none'
   },
   trackInfoWrapper: { 
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-    padding: '10px 0', flexShrink: 0 
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1vh 0', flexShrink: 0 
   },
-  title: { fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)', margin: '0 0 4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  artist: { fontSize: '17px', color: 'var(--text-secondary)', margin: 0 },
-  bottomArea: { padding: '10px 0 10px 0', flexShrink: 0 },
-  progressWrapper: { width: '100%', marginBottom: '20px' },
+  title: { fontSize: 'clamp(22px, 6vw, 28px)', fontWeight: '800', color: 'var(--text-primary)', margin: '0 0 4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  artist: { fontSize: 'clamp(16px, 4.5vw, 20px)', color: 'var(--text-secondary)', margin: 0, opacity: 0.8 },
+  bottomArea: { padding: '1vh 0 4vh 0', flexShrink: 0 },
+  progressWrapper: { width: '100%', marginBottom: '2vh' },
   rangeInput: { width: '100%', height: '4px', appearance: 'none', borderRadius: '5px', outline: 'none' },
-  timeInfo: { display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)' },
+  timeInfo: { display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '500' },
   mainControlsRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%'
+    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%'
   },
   controlsWrapper: { 
     display: 'flex', 
     alignItems: 'center', 
-    justifyContent: 'space-between', 
-    width: '100%',
-    maxWidth: '400px'
+    justifyContent: 'center',
+    gap: '12px',              
+    width: '100%'
   },
-  playButton: { 
-    background: 'var(--accent-color)', color: '#fff', borderRadius: '50%', 
-    width: '65px', height: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-    cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,0,0,0.2)', transition: 'transform 0.1s'
+  sideControlBox: { width: '40px' },
+  stepControlBox: { width: '60px' },
+  playControlBox: { width: '80px' },
+  playButtonRaw: { 
+    color: 'var(--text-primary)', cursor: 'pointer', transition: 'transform 0.1s', border: 'none', background: 'none', padding: 0, outline: 'none', opacity: 0.9
   },
-  controlIcon: { color: 'var(--text-primary)', cursor: 'pointer' },
+  controlIcon: { 
+    color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.2s ease', display: 'block', outline: 'none', opacity: 0.95
+  },
   lyricsWrapperFull: { height: '100%', display: 'flex', flexDirection: 'column' },
-  lyricsHeader: { flexShrink: 0 },
   lyricsBody: { flex: 1, minHeight: 0, display: 'flex', justifyContent: 'center' },
   lyricsScroll: { 
-    height: '100%', width: '100%', maxWidth: '400px', overflowY: 'auto', padding: '0 30px',
+    height: '100%', width: '100%', maxWidth: '400px', overflowY: 'auto', padding: '0 20px',
     maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)',
     WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)'
   },
-  lyricLine: { marginBottom: '25px', fontWeight: '800', textAlign: 'left' }
+  lyricLine: { marginBottom: '25px', fontWeight: '800', textAlign: 'left', lineHeight: '1.2' }
 };
 
 export default FullPlayer;
