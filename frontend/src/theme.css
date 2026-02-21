@@ -1,3 +1,32 @@
+/* --- Базовые сбросы и исправления мобильных артефактов --- */
+* {
+  /* Убираем то самое синее выделение (Tap Highlight) */
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Убираем стандартный контур фокуса, так как мы сами управляем состояниями */
+  outline: none;
+  
+  /* Делаем бокс-модель предсказуемой */
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  /* Запрещаем выделение текста по всему приложению (кроме полей ввода) */
+  user-select: none;
+  -webkit-user-select: none;
+  /* Улучшаем плавность скролла на iOS */
+  -webkit-overflow-scrolling: touch;
+}
+
+input {
+  /* Разрешаем выделение текста в инпутах, чтобы можно было редактировать поиск */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* --- Переменные темы --- */
 :root {
   --brand-pink: #ff6b81;
   --bg-color: #ffffff;
@@ -14,9 +43,7 @@
   --lyric-shadow: rgba(0, 0, 0, 0.08);
   --progress-bg: rgba(0, 0, 0, 0.08);
 
-  /* Скрываем обложку на фоне в светлой теме (0) */
   --bg-blur-opacity: 0; 
-  /* Цвет оверлея для эффекта матового стекла */
   --bg-overlay-color: rgba(255, 255, 255, 0.8);
 }
 
@@ -34,7 +61,31 @@
   --lyric-shadow: rgba(255, 255, 255, 0.3);
   --progress-bg: rgba(255, 255, 255, 0.1);
 
-  /* Показываем обложку на фоне в темной теме */
   --bg-blur-opacity: 0.7;
   --bg-overlay-color: rgba(18, 18, 18, 0.6);
+}
+
+/* --- Интерактивные элементы (Эффект нажатия) --- */
+
+/* Эффект для списка треков */
+.track-item {
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  cursor: pointer;
+}
+
+.track-item:active {
+  /* Вместо синего выделения — легкое затемнение и уменьшение */
+  background-color: var(--bg-surface);
+  transform: scale(0.98);
+}
+
+/* Эффект для кнопок управления */
+button:active {
+  opacity: 0.7;
+  transform: scale(0.95);
+}
+
+/* Стиль для инпута поиска при фокусе (убираем синюю рамку в Chrome) */
+input:focus {
+  border: 1px solid var(--accent-color) !important;
 }

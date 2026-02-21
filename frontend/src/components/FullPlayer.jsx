@@ -129,12 +129,26 @@ const FullPlayer = ({
   }, [showVolumeBar]);
 
   // Обработка громкости
-  const handleVolumeChange = (e) => {
-    const newVol = parseFloat(e.target.value);
+  // Добавь реф в начало компонента FullPlayer
+const lastVolumeUpdateRef = useRef(0);
+
+const handleVolumeChange = (e) => {
+  const newVol = parseFloat(e.target.value);
+  const now = Date.now();
+  
+  // Обновляем аудио не чаще чем раз в 50мс
+  if (now - lastVolumeUpdateRef.current > 50) {
     setVolume(newVol);
-    if (audioRef.current) audioRef.current.volume = newVol;
-    resetVolumeTimer();
-  };
+    if (audioRef.current) {
+      audioRef.current.volume = newVol;
+    }
+    lastVolumeUpdateRef.current = now;
+  } else {
+    // Состояние ползунка (визуал) обновляем всегда для плавности
+    setVolume(newVol);
+  }
+  resetVolumeTimer();
+};
 
   const resetVolumeTimer = () => {
     if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
@@ -149,47 +163,45 @@ const FullPlayer = ({
 
   // Поделиться треком в Telegram
 const handleShare = async () => {
-    const isTelegram = !!(window.Telegram?.WebApp?.initData);
-    let shareUrl = '';
+    // Безопасно берем объект WebApp
+    const tg = window.Telegram?.WebApp;
     
-    if (isTelegram) {
-        // Формат для Telegram Mini App
-        const botUsername = 'music_player_vufik_bot';
-        const appShortName = 'play'; // Убедись, что это Short Name из BotFather
-        shareUrl = `https://t.me/${botUsername}/${appShortName}?startapp=${currentTrack.deezer_id}`;
-    } else {
-        // Обычный формат для браузера
-        shareUrl = `${window.location.origin}${window.location.pathname}?track=${currentTrack.deezer_id}`;
-    }
+    // Проверяем платформу. Если мы в ТГ, там будет 'android', 'ios', 'tdesktop' и т.д.
+    const isTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
+    
+    const botUsername = 'music_player_vufik_bot';
+    const appShortName = 'play'; 
+    
+    // Формируем ссылку
+    const shareUrl = isTelegram 
+        ? `https://t.me/${botUsername}/${appShortName}?startapp=${currentTrack.deezer_id}`
+        : `${window.location.origin}${window.location.pathname}?track=${currentTrack.deezer_id}`;
     
     const shareText = `Послушай этот трек: ${currentTrack.artist} - ${currentTrack.title}`;
 
-    // Если мы в Telegram, используем их внутренний механизм шаринга (откроет список чатов)
     if (isTelegram) {
+        // Нативный шаринг внутри Telegram
         const tgLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
-        window.Telegram.WebApp.openTelegramLink(tgLink);
-        window.Telegram.WebApp.HapticFeedback?.impactOccurred('medium');
-        return;
-    }
-
-    // Стандартная логика для обычных браузеров
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: currentTrack.title,
-          text: shareText,
-          url: shareUrl,
-        });
-      } catch (err) {
-        console.log("Отмена шаринга");
-      }
+        tg.openTelegramLink(tgLink);
+        
+        // Вибрация — важная мелочь для "нативности"
+        if (tg.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('medium');
+        }
     } else {
-      try {
-        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-        alert('Ссылка скопирована!');
-      } catch (err) {
-        console.error("Ошибка копирования:", err);
-      }
+        // Браузерный вариант
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: currentTrack.title,
+                    text: shareText,
+                    url: shareUrl,
+                });
+            } catch (err) { console.log("Отмена"); }
+        } else {
+            navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+            alert('Ссылка скопирована!');
+        }
     }
 };
   if (!isOpen || !currentTrack) return null;
@@ -303,6 +315,9 @@ const handleShare = async () => {
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .ios-volume-popover, .ios-volume-input {
+  touch-action: none; /* Запрещает системе обрабатывать жесты внутри этой области */
+}
       `}</style>
 
       {/* СЛОЙ 1: Фон */}
