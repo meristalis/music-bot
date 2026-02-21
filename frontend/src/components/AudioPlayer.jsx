@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'; // Убрал useCallback, так как функция придет извне
 import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Repeat1, Heart, AlignCenter } from 'lucide-react';
 
 const AudioPlayer = ({
@@ -25,143 +25,125 @@ const AudioPlayer = ({
   volume,
   setVolume,
   formatTime,
-  backendBaseUrl
+  backendBaseUrl,
+  // prepareAudio, // Если вы передаете его из App.js, он будет здесь
 }) => {
   if (!currentTrack) return null;
 
-  if (isFullPlayerOpen) {
-    return (
-      <audio
-        ref={audioRef}
-        src={currentTrack.play_link || (currentTrack.file_id ? `${backendBaseUrl}/api/tracks/stream/${currentTrack.file_id}` : null)}
-        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
-        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
-        onEnded={handleNext}
-        autoPlay
-      />
-    );
-  }
-
+  // Вспомогательная функция для прогресс-бара
   const renderProgress = (progress) => (
     <div style={{ height: '100%', width: `${progress * 100}%`, background: 'var(--text-primary)' }} />
   );
 
   return (
     <>
+      {/* ОДИН общий тег audio для всех режимов */}
       <audio
         ref={audioRef}
         src={currentTrack.play_link || (currentTrack.file_id ? `${backendBaseUrl}/api/tracks/stream/${currentTrack.file_id}` : null)}
+        playsInline
+        preload="auto"
+        autoPlay
         onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
         onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
         onEnded={handleNext}
-        autoPlay
       />
 
-      {isMobile ? (
-        /* MOBILE MINI PLAYER */
-        <div style={styles.mobileContainer}>
-          <div style={styles.mobileProgressBar}>
-            {renderProgress(currentTime / (duration || 1))}
-          </div>
+      {/* Если открыт полный плеер, мы просто возвращаем пустой фрагмент, 
+          так как FullPlayer рендерится отдельно в App.js. 
+          Если же FullPlayer — это часть AudioPlayer, логика ниже */}
+      
+      {!isFullPlayerOpen && (
+        isMobile ? (
+          /* MOBILE MINI PLAYER */
+          <div style={styles.mobileContainer}>
+            <div style={styles.mobileProgressBar}>
+              {renderProgress(currentTime / (duration || 1))}
+            </div>
 
-          <div onClick={() => setIsFullPlayerOpen(true)} style={styles.mobileTrackInfo}>
-            <img src={currentTrack.cover_url} style={styles.mobileCover} alt="" />
-            <div style={{ minWidth: 0 }}>
-              <div style={styles.mobileTitle}>{currentTrack.title}</div>
-              <div style={styles.mobileArtist}>{currentTrack.artist}</div>
-            </div>
-          </div>
-
-          <div style={styles.mobileControls}>
-            <Shuffle
-              size={18}
-              onClick={() => setIsShuffle(!isShuffle)}
-              style={{ ...styles.icon, color: isShuffle ? 'var(--accent-color)' : 'var(--text-secondary)' }}
-            />
-            <SkipBack size={20} fill="currentColor" onClick={handlePrev} style={styles.icon} />
-            <div onClick={togglePlay} style={styles.icon}>
-              {loadingTrackId === currentTrack?.deezer_id ? (
-                <div className="loader-spin"><AlignCenter size={24} /></div>
-              ) : isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
-            </div>
-            <SkipForward size={20} fill="currentColor" onClick={handleNext} style={styles.icon} />
-            <div onClick={toggleRepeat} style={{ ...styles.icon, color: repeatMode !== 'none' ? 'var(--accent-color)' : 'var(--text-secondary)' }}>
-              {repeatMode === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* DESKTOP PLAYER */
-        <div style={styles.desktopContainer}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
-            <div onClick={() => setIsFullPlayerOpen(true)} style={styles.desktopTrackInfo}>
-              <img src={currentTrack.cover_url} style={styles.desktopCover} alt="" />
+            <div onClick={() => setIsFullPlayerOpen(true)} style={styles.mobileTrackInfo}>
+              <img src={currentTrack.cover_url} style={styles.mobileCover} alt="" />
               <div style={{ minWidth: 0 }}>
-                <div style={styles.desktopTitle}>{currentTrack.title}</div>
-                <div style={styles.desktopArtist}>{currentTrack.artist}</div>
+                <div style={styles.mobileTitle}>{currentTrack.title}</div>
+                <div style={styles.mobileArtist}>{currentTrack.artist}</div>
               </div>
             </div>
 
-            <div style={styles.desktopMainControls}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <SkipBack size={20} fill="currentColor" onClick={handlePrev} style={styles.icon} />
-                <div onClick={togglePlay} style={styles.icon}>
-                  {loadingTrackId === currentTrack?.deezer_id ? (
-                    <div className="loader-spin"><AlignCenter size={24} /></div>
-                  ) : isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
+            <div style={styles.mobileControls}>
+              <div onClick={togglePlay} style={styles.icon}>
+                {loadingTrackId === currentTrack?.deezer_id ? (
+                  <div className="loader-spin"><AlignCenter size={24} /></div>
+                ) : isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
+              </div>
+              <SkipForward size={20} fill="currentColor" onClick={handleNext} style={styles.icon} />
+            </div>
+          </div>
+        ) : (
+          /* DESKTOP PLAYER */
+          <div style={styles.desktopContainer}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+              <div onClick={() => setIsFullPlayerOpen(true)} style={styles.desktopTrackInfo}>
+                <img src={currentTrack.cover_url} style={styles.desktopCover} alt="" />
+                <div style={{ minWidth: 0 }}>
+                  <div style={styles.desktopTitle}>{currentTrack.title}</div>
+                  <div style={styles.desktopArtist}>{currentTrack.artist}</div>
                 </div>
-                <SkipForward size={20} fill="currentColor" onClick={handleNext} style={styles.icon} />
               </div>
 
-              <div style={styles.desktopProgressRow}>
-                <span style={styles.timeLabel}>{formatTime(currentTime)}</span>
+              <div style={styles.desktopMainControls}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                  <SkipBack size={20} fill="currentColor" onClick={handlePrev} style={styles.icon} />
+                  <div onClick={togglePlay} style={styles.icon}>
+                    {loadingTrackId === currentTrack?.deezer_id ? (
+                      <div className="loader-spin"><AlignCenter size={24} /></div>
+                    ) : isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
+                  </div>
+                  <SkipForward size={20} fill="currentColor" onClick={handleNext} style={styles.icon} />
+                </div>
+
+                <div style={styles.desktopProgressRow}>
+                  <span style={styles.timeLabel}>{formatTime(currentTime)}</span>
+                  <input
+                    type="range" min="0" max={duration || 0} value={currentTime}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      if (audioRef.current) {
+                        audioRef.current.currentTime = val;
+                        setCurrentTime(val);
+                      }
+                    }}
+                    style={{
+                      ...styles.desktopRange,
+                      background: `linear-gradient(to right, var(--text-primary) ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.1) ${(currentTime / (duration || 1)) * 100}%)`
+                    }}
+                  />
+                  <span style={styles.timeLabel}>{formatTime(duration)}</span>
+                </div>
+              </div>
+
+              <div style={styles.desktopSideControls}>
+                <Heart
+                  size={20} onClick={() => handleLike(currentTrack)}
+                  fill={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "none"}
+                  color={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "var(--text-primary)"}
+                  style={styles.icon}
+                />
                 <input
-                  type="range" min="0" max={duration || 0} value={currentTime}
+                  type="range" min="0" max="1" step="0.01" value={volume}
                   onChange={(e) => {
-                    const val = Number(e.target.value);
-                    if (audioRef.current) {
-                      audioRef.current.currentTime = val;
-                      setCurrentTime(val);
-                    }
+                    const val = parseFloat(e.target.value);
+                    setVolume(val);
+                    if (audioRef.current) audioRef.current.volume = val;
                   }}
                   style={{
-                    ...styles.desktopRange,
-                    background: `linear-gradient(to right, var(--text-primary) ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.1) ${(currentTime / (duration || 1)) * 100}%)`
+                    ...styles.volumeRange,
+                    background: `linear-gradient(to right, var(--text-primary) ${volume * 100}%, rgba(255,255,255,0.1) ${volume * 100}%)`
                   }}
                 />
-                <span style={styles.timeLabel}>{formatTime(duration)}</span>
               </div>
-            </div>
-
-            <div style={styles.desktopSideControls}>
-              <Shuffle
-                size={16} onClick={() => setIsShuffle(!isShuffle)}
-                style={{ ...styles.icon, color: isShuffle ? 'var(--accent-color)' : 'var(--text-secondary)' }}
-              />
-              <div onClick={toggleRepeat} style={{ ...styles.icon, color: repeatMode !== 'none' ? 'var(--accent-color)' : 'var(--text-secondary)' }}>
-                {repeatMode === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
-              </div>
-              <Heart
-                size={20} onClick={() => handleLike(currentTrack)}
-                fill={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "none"}
-                color={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "var(--text-primary)"}
-                style={styles.icon}
-              />
-              <input
-                type="range" min="0" max="1" step="0.01" value={volume}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  setVolume(val);
-                  if (audioRef.current) audioRef.current.volume = val;
-                }}
-                style={{
-                  ...styles.volumeRange,
-                  background: `linear-gradient(to right, var(--text-primary) ${volume * 100}%, rgba(255,255,255,0.1) ${volume * 100}%)`
-                }}
-              />
             </div>
           </div>
-        </div>
+        )
       )}
     </>
   );

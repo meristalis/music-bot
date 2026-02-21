@@ -260,27 +260,62 @@ const FullPlayer = ({
           z-index: 5;
         }
 
-        .track-slider {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 100%;
-          height: 4px;
-          border-radius: 2px;
-          background: var(--progress-bg);
-          cursor: pointer;
-          transition: height 0.2s ease;
-        }
+        /* ... ваши существующие стили ... */
 
-        .track-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          height: 12px;
-          width: 12px;
-          border-radius: 50%;
-          background: #fff;
-          border: 2px solid var(--accent-color);
-          box-shadow: 0 0 10px rgba(0,0,0,0.2);
-        }
+.track-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px; /* Чуть увеличим высоту для удобства */
+  border-radius: 10px;
+  background: var(--progress-bg);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+/* Стили для Chrome, Safari, Edge */
+.track-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--accent-color); /* Кольцо вокруг белой точки */
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
+  opacity: 0; /* Скрываем в обычном состоянии */
+}
+
+/* Показываем ползунок при наведении на весь контейнер или при активном использовании */
+.progress-wrapper:hover .track-slider::-webkit-slider-thumb,
+.track-slider:active::-webkit-slider-thumb {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* Стили для Firefox */
+.track-slider::-moz-range-thumb {
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--accent-color);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  border: none;
+  opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s;
+}
+
+.progress-wrapper:hover .track-slider::-moz-range-thumb,
+.track-slider:active::-moz-range-thumb {
+  opacity: 1;
+  transform: scale(1.2);
+}
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
@@ -422,27 +457,31 @@ const FullPlayer = ({
         </div>
 
         <div style={styles.bottomArea}>
-          <div style={styles.progressWrapper}>
-            <input
-              type="range"
-              min="0"
-              max={duration || 0}
-              value={currentTime}
-              className="track-slider"
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                if (audioRef.current) { audioRef.current.currentTime = val; setCurrentTime(val); }
-              }}
-              style={{
-                ...styles.rangeInput,
-                background: `linear-gradient(to right, var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
-              }}
-            />
-            <div style={styles.timeInfo}>
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-          </div>
+          <div style={styles.progressWrapper} className="progress-wrapper">
+    <input
+      type="range"
+      min="0"
+      max={duration || 0}
+      value={currentTime}
+      className="track-slider"
+      onChange={(e) => {
+        const val = Number(e.target.value);
+        if (audioRef.current) { 
+          audioRef.current.currentTime = val; 
+          setCurrentTime(val); 
+        }
+      }}
+      style={{
+        // Убираем инлайновый background, если он конфликтует, 
+        // или оставляем его для динамического закрашивания пройденного пути:
+        background: `linear-gradient(to right, var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
+      }}
+    />
+    <div style={styles.timeInfo}>
+      <span>{formatTime(currentTime)}</span>
+      <span>{formatTime(duration)}</span>
+    </div>
+  </div>
 
           <div style={styles.mainControlsRow}>
             <div style={styles.controlsWrapper}>

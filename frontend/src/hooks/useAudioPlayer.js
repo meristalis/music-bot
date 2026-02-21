@@ -6,19 +6,32 @@ export const useAudioPlayer = (library, handleTrackSelect) => {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isShuffle, setIsShuffle] = useState(false);
-  const [repeatMode, setRepeatMode] = useState('none'); // 'none' | 'all' | 'one'
+  const [repeatMode, setRepeatMode] = useState('none');
   const [currentTrack, setCurrentTrack] = useState(null);
 
   const audioRef = useRef(null);
+
+  // --- НОВОЕ: Подготовка аудио для мобильных WebView ---
+  const prepareAudio = useCallback(() => {
+    if (audioRef.current) {
+      // Пытаемся запустить пустой звук. Это дает сигнал системе:
+      // "Это приложение сейчас будет управлять звуком!"
+      audioRef.current.play()
+        .then(() => audioRef.current.pause())
+        .catch(() => {}); 
+    }
+  }, []);
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play();
+      // play() возвращает promise, стоит это учитывать
+      audioRef.current.play().catch(e => console.error("Play error:", e));
     }
-    setIsPlaying(!isPlaying);
+    // Мы не будем ставить setIsPlaying здесь, 
+    // а сделаем это в обработчиках onPlay/onPause в AudioPlayer.jsx
   }, [isPlaying]);
 
   const toggleRepeat = useCallback(() => {
@@ -32,7 +45,6 @@ export const useAudioPlayer = (library, handleTrackSelect) => {
   const handleNext = useCallback(() => {
     if (!currentTrack || library.length === 0) return;
     
-    // Если стоит повтор одного трека
     if (repeatMode === 'one') {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
@@ -49,7 +61,13 @@ export const useAudioPlayer = (library, handleTrackSelect) => {
       if (currentIndex !== -1 && currentIndex < library.length - 1) {
         nextTrack = library[currentIndex + 1];
       } else {
-        nextTrack = library[0]; // В начало списка
+        // Если дошли до конца, а repeatMode 'all' — идем в начало
+        if (repeatMode === 'all') {
+          nextTrack = library[0];
+        } else {
+          setIsPlaying(false);
+          return;
+        }
       }
     }
     if (nextTrack) handleTrackSelect(nextTrack);
@@ -82,6 +100,7 @@ export const useAudioPlayer = (library, handleTrackSelect) => {
     audioRef,
     togglePlay,
     handleNext,
-    handlePrev
+    handlePrev,
+    prepareAudio
   };
 };
