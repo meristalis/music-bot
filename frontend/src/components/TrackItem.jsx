@@ -31,7 +31,7 @@ const TrackItem = ({
         display: 'flex', 
         alignItems: 'center', 
         gap: '12px', 
-        padding: '8px 10px 8px 12px', // Увеличили правый отступ внутри контейнера
+        padding: '8px 4px 8px 12px', // Увеличили правый отступ внутри контейнера
         borderRadius: '12px', 
         cursor: 'pointer',
         background: isActive ? 'rgba(128, 128, 128, 0.12)' : 'transparent',

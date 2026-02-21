@@ -43,10 +43,12 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		api.GET("/tracks/stream/:file_id", h.StreamTrack)
 		api.GET("/tracks", h.GetTracks)
 		api.GET("/search/deezer", h.SearchTracksDZ)
+		api.GET("/search/artist", h.SearchArtistsDZ)
 		api.POST("/tracks/like", h.HandleLike)
 		api.POST("/tracks/unlike", h.HandleUnlike)
 		api.GET("/tracks/status/:id", h.CheckStatus)
 		api.GET("/queue/stats", h.GetQueueStats)
+		api.GET("/search/album", h.SearchAlbumsDZ)
 	}
 }
 
@@ -280,4 +282,39 @@ func (h *Handler) GetQueueStats(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"seconds": seconds,
 	})
+}
+
+func (h *Handler) SearchArtistsDZ(c *gin.Context) {
+	query := strings.TrimSpace(c.Query("q"))
+
+	if query == "" {
+		c.JSON(http.StatusOK, []interface{}{})
+		return
+	}
+
+	// Вызываем usecase (метод SearchArtists нужно будет добавить в usecase ниже)
+	artists, err := h.searchDZUC.SearchArtists(c.Request.Context(), query)
+	if err != nil {
+		slog.Error("Failed to search artists", "query", query, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to search artists"})
+		return
+	}
+
+	c.JSON(http.StatusOK, artists)
+}
+
+func (h *Handler) SearchAlbumsDZ(c *gin.Context) {
+	query := strings.TrimSpace(c.Query("q"))
+	if query == "" {
+		c.JSON(http.StatusOK, []interface{}{})
+		return
+	}
+
+	albums, err := h.searchDZUC.SearchAlbums(c.Request.Context(), query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to search albums"})
+		return
+	}
+
+	c.JSON(http.StatusOK, albums)
 }

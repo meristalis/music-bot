@@ -4,6 +4,8 @@ import FullPlayer from './components/FullPlayer';
 import TrackItem from './components/TrackItem';
 import AudioPlayer from './components/AudioPlayer';
 import Header from './components/Header';
+import ArtistItem, { ArtistsSection } from './components/ArtistItem';
+import AlbumItem, { AlbumsSection } from './components/AlbumItem';
 import { useAudioPlayer } from './hooks/useAudioPlayer'; 
 import './App.css';
 import './theme.css';
@@ -41,6 +43,8 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [searchArtists, setSearchArtists] = useState([]);
+  const [searchAlbums, setSearchAlbums] = useState([]);
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
@@ -227,24 +231,38 @@ function App() {
   }, []);
 
   // Search Logic
-  useEffect(() => {
-    const cleanQuery = debouncedSearch.trim();
-    if (cleanQuery.length > 1) {
-      setIsSearching(true);
-      axios.get(`${backendBaseUrl}/api/search/deezer?q=${encodeURIComponent(cleanQuery)}`)
-        .then(res => {
-          setSearchResults(Array.isArray(res.data) ? res.data : []);
-          setIsSearching(false);
-        })
-        .catch(() => {
-          setSearchResults([]);
-          setIsSearching(false);
-        });
-    } else {
-      setSearchResults([]);
-      setIsSearching(false);
-    }
-  }, [debouncedSearch, backendBaseUrl]);
+useEffect(() => {
+  const cleanQuery = debouncedSearch.trim();
+  
+  if (cleanQuery.length > 1) {
+    setIsSearching(true);
+
+    Promise.all([
+      axios.get(`${backendBaseUrl}/api/search/deezer?q=${encodeURIComponent(cleanQuery)}`),
+      axios.get(`${backendBaseUrl}/api/search/artist?q=${encodeURIComponent(cleanQuery)}`),
+      axios.get(`${backendBaseUrl}/api/search/album?q=${encodeURIComponent(cleanQuery)}`)
+    ])
+      .then(([tracksRes, artistsRes, albumsRes]) => { // Добавили albumsRes
+        setSearchResults(Array.isArray(tracksRes.data) ? tracksRes.data : []);
+        setSearchArtists(Array.isArray(artistsRes.data) ? artistsRes.data : []);
+        setSearchAlbums(Array.isArray(albumsRes.data) ? albumsRes.data : []);
+      })
+      .catch((err) => {
+        console.error("Search error:", err);
+        setSearchResults([]);
+        setSearchArtists([]);
+        setSearchAlbums([]); // Очищаем всё при ошибке
+      })
+      .finally(() => {
+        setIsSearching(false);
+      });
+  } else {
+    setSearchResults([]);
+    setSearchArtists([]);
+    setSearchAlbums([]);
+    setIsSearching(false);
+  }
+}, [debouncedSearch, backendBaseUrl]);
 
   const handleLike = async (track) => {
     if (!tgUser || !track) return;
@@ -490,6 +508,19 @@ function App() {
         {!isSearchOpen && library.length === 0 && (
           <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '40px' }}>Ваша медиатека пуста</p>
         )}
+{isSearchOpen && (
+  <>
+    <ArtistsSection 
+      artists={searchArtists} 
+      onArtistClick={(artist) => setSearchQuery(artist.name)} 
+    />
+    
+    <AlbumsSection 
+      albums={searchAlbums} 
+      onAlbumClick={(album) => setSearchQuery(`${album.artist_name} ${album.title}`)} 
+    />
+  </>
+)}
       </div>
 
       <FullPlayer 
