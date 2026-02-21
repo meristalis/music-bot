@@ -27,7 +27,7 @@ const formatTime = (seconds) => {
 
 function App() {
   const MOBILE_BREAKPOINT = 780;
-  const backendBaseUrl = "https://138.124.108.4.nip.io";
+  const backendBaseUrl = "";
 
   // --- Состояния интерфейса и данных ---
   const [now, setNow] = useState(Date.now());
