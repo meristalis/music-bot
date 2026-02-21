@@ -494,8 +494,10 @@ function App() {
 
       <FullPlayer 
   {...player} 
+  togglePlay={player.togglePlay}
   handleNext={player.handleNext} // Проверьте, чтобы имя тут совпадало с тем, что в FullPlayer.jsx
   handlePrev={player.handlePrev}
+  isPlaying={player.isPlaying}
   isOpen={isFullPlayerOpen} 
   onClose={() => setIsFullPlayerOpen(false)} 
   formatTime={formatTime} 

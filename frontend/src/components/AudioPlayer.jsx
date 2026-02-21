@@ -16,10 +16,7 @@ const AudioPlayer = ({
   isFullPlayerOpen,
   setIsFullPlayerOpen,
   loadingTrackId,
-  isShuffle,
-  setIsShuffle,
-  repeatMode,
-  toggleRepeat,
+  setIsPlaying,
   handleLike,
   favoriteTrackIds,
   volume,
@@ -38,16 +35,19 @@ const AudioPlayer = ({
   return (
     <>
       {/* ОДИН общий тег audio для всех режимов */}
-      <audio
-        ref={audioRef}
-        src={currentTrack.play_link || (currentTrack.file_id ? `${backendBaseUrl}/api/tracks/stream/${currentTrack.file_id}` : null)}
-        playsInline
-        preload="auto"
-        autoPlay
-        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
-        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
-        onEnded={handleNext}
-      />
+<audio
+  ref={audioRef}
+  src={currentTrack.play_link || (currentTrack.file_id ? `${backendBaseUrl}/api/tracks/stream/${currentTrack.file_id}` : null)}
+  playsInline
+  preload="auto"
+  autoPlay
+  onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+  onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+  onEnded={handleNext}
+  /* ДОБАВЬ ЭТИ ДВЕ СТРОЧКИ */
+  onPlay={() => setIsPlaying(true)}
+  onPause={() => setIsPlaying(false)}
+/>
 
       {/* Если открыт полный плеер, мы просто возвращаем пустой фрагмент, 
           так как FullPlayer рендерится отдельно в App.js. 
@@ -57,27 +57,40 @@ const AudioPlayer = ({
         isMobile ? (
           /* MOBILE MINI PLAYER */
           <div style={styles.mobileContainer}>
-            <div style={styles.mobileProgressBar}>
-              {renderProgress(currentTime / (duration || 1))}
-            </div>
+  <div style={styles.mobileProgressBar}>
+    {renderProgress(currentTime / (duration || 1))}
+  </div>
 
-            <div onClick={() => setIsFullPlayerOpen(true)} style={styles.mobileTrackInfo}>
-              <img src={currentTrack.cover_url} style={styles.mobileCover} alt="" />
-              <div style={{ minWidth: 0 }}>
-                <div style={styles.mobileTitle}>{currentTrack.title}</div>
-                <div style={styles.mobileArtist}>{currentTrack.artist}</div>
-              </div>
-            </div>
+  <div onClick={() => setIsFullPlayerOpen(true)} style={styles.mobileTrackInfo}>
+    <img src={currentTrack.cover_url} style={styles.mobileCover} alt="" />
+    <div style={{ minWidth: 0 }}>
+      <div style={styles.mobileTitle}>{currentTrack.title}</div>
+      <div style={styles.mobileArtist}>{currentTrack.artist}</div>
+    </div>
+  </div>
 
-            <div style={styles.mobileControls}>
-              <div onClick={togglePlay} style={styles.icon}>
-                {loadingTrackId === currentTrack?.deezer_id ? (
-                  <div className="loader-spin"><AlignCenter size={24} /></div>
-                ) : isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
-              </div>
-              <SkipForward size={20} fill="currentColor" onClick={handleNext} style={styles.icon} />
-            </div>
-          </div>
+  <div style={styles.mobileControls}>
+    {/* ДОБАВЛЕННАЯ КНОПКА НАЗАД */}
+    <SkipBack size={20} fill="currentColor" onClick={(e) => {
+      e.stopPropagation(); // Чтобы не открывался фулл-плеер при нажатии
+      handlePrev();
+    }} style={styles.icon} />
+
+    <div onClick={(e) => {
+      e.stopPropagation();
+      togglePlay();
+    }} style={styles.icon}>
+      {loadingTrackId === currentTrack?.deezer_id ? (
+        <div className="loader-spin"><AlignCenter size={24} /></div>
+      ) : isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
+    </div>
+
+    <SkipForward size={20} fill="currentColor" onClick={(e) => {
+      e.stopPropagation();
+      handleNext();
+    }} style={styles.icon} />
+  </div>
+</div>
         ) : (
           /* DESKTOP PLAYER */
           <div style={styles.desktopContainer}>

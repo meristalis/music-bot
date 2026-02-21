@@ -22,17 +22,15 @@ export const useAudioPlayer = (library, handleTrackSelect) => {
     }
   }, []);
 
-  const togglePlay = useCallback(() => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      // play() возвращает promise, стоит это учитывать
-      audioRef.current.play().catch(e => console.error("Play error:", e));
-    }
-    // Мы не будем ставить setIsPlaying здесь, 
-    // а сделаем это в обработчиках onPlay/onPause в AudioPlayer.jsx
-  }, [isPlaying]);
+const togglePlay = useCallback(() => {
+  if (!audioRef.current) return;
+
+  if (audioRef.current.paused) {
+    audioRef.current.play().catch(e => console.error("Playback failed:", e));
+  } else {
+    audioRef.current.pause();
+  }
+}, []);
 
   const toggleRepeat = useCallback(() => {
     setRepeatMode(prev => {

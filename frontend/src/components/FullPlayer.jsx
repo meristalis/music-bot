@@ -188,6 +188,26 @@ const FullPlayer = ({
   return (
     <div style={styles.overlay}>
       <style>{`
+      input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  background: transparent;
+  border: none;
+}
+
+/* Убираем контур при фокусе для эстетики */
+input[type="range"]:focus {
+  outline: none;
+}
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         
@@ -472,8 +492,6 @@ const FullPlayer = ({
         }
       }}
       style={{
-        // Убираем инлайновый background, если он конфликтует, 
-        // или оставляем его для динамического закрашивания пройденного пути:
         background: `linear-gradient(to right, var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
       }}
     />
