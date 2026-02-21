@@ -27,7 +27,7 @@ const formatTime = (seconds) => {
 
 function App() {
   const MOBILE_BREAKPOINT = 780;
-  const backendBaseUrl = "";
+  const backendBaseUrl = "https://138.124.108.4.nip.io";
 
   // --- Состояния интерфейса и данных ---
   const [now, setNow] = useState(Date.now());
@@ -356,6 +356,7 @@ useEffect(() => {
 
     fetchAndPlay();
     setIsFullPlayerOpen(true);
+    player.setIsPlaying(false);
     window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
   }
 }, [handleTrackSelect, backendBaseUrl]);
