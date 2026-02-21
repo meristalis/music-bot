@@ -149,11 +149,30 @@ const FullPlayer = ({
 
   // Поделиться треком в Telegram
 const handleShare = async () => {
-    // Формируем ссылку на твое приложение с ID трека
-    const shareUrl = `${window.location.origin}${window.location.pathname}?track=${currentTrack.deezer_id}`;
+    const isTelegram = !!(window.Telegram?.WebApp?.initData);
+    let shareUrl = '';
+    
+    if (isTelegram) {
+        // Формат для Telegram Mini App
+        const botUsername = 'music_player_vufik_bot';
+        const appShortName = 'play'; // Убедись, что это Short Name из BotFather
+        shareUrl = `https://t.me/${botUsername}/${appShortName}?startapp=${currentTrack.deezer_id}`;
+    } else {
+        // Обычный формат для браузера
+        shareUrl = `${window.location.origin}${window.location.pathname}?track=${currentTrack.deezer_id}`;
+    }
+    
     const shareText = `Послушай этот трек: ${currentTrack.artist} - ${currentTrack.title}`;
 
-    // 1. Проверяем поддержку Web Share API (iOS/Android/Safari на Mac)
+    // Если мы в Telegram, используем их внутренний механизм шаринга (откроет список чатов)
+    if (isTelegram) {
+        const tgLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+        window.Telegram.WebApp.openTelegramLink(tgLink);
+        window.Telegram.WebApp.HapticFeedback?.impactOccurred('medium');
+        return;
+    }
+
+    // Стандартная логика для обычных браузеров
     if (navigator.share) {
       try {
         await navigator.share({
@@ -161,25 +180,18 @@ const handleShare = async () => {
           text: shareText,
           url: shareUrl,
         });
-        // Если поделились успешно, можем добавить тактильный отклик для ТГ
-        window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
       } catch (err) {
-        console.log("Пользователь отменил действие или произошла ошибка:", err);
+        console.log("Отмена шаринга");
       }
-    } 
-    // 2. Фолбэк для ПК (Chrome/Firefox на Windows/Linux)
-    else {
+    } else {
       try {
         await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-        // Здесь можно заменить alert на красивый тост, если он у тебя есть
-        alert('Ссылка скопирована в буфер обмена!');
-        window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium');
+        alert('Ссылка скопирована!');
       } catch (err) {
-        console.error("Не удалось скопировать:", err);
+        console.error("Ошибка копирования:", err);
       }
     }
-  };
-
+};
   if (!isOpen || !currentTrack) return null;
 
   const isLiked = favoriteTrackIds.has(currentTrack.deezer_id);

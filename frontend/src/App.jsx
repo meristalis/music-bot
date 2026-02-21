@@ -321,35 +321,44 @@ function App() {
   }, [isFullPlayerOpen]);
       // Share track logic
 useEffect(() => {
+  const tg = window.Telegram?.WebApp;
+  
+  // 1. Пытаемся достать ID из параметров Telegram (startapp)
+  const startParam = tg?.initDataUnsafe?.start_param;
+  
+  // 2. Пытаемся достать ID из обычной адресной строки (?track=)
   const params = new URLSearchParams(window.location.search);
   const trackIdFromUrl = params.get('track');
+
+  // Итоговый ID: приоритет у Telegram, если его нет — берем из URL
+  const finalTrackId = startParam || trackIdFromUrl;
   
-  if (trackIdFromUrl && handleTrackSelect) {
+  if (finalTrackId && handleTrackSelect) {
     const fetchAndPlay = async () => {
       try {
         // Шаг 1: Проверяем, знает ли наш бэкенд этот трек
-        const statusRes = await axios.get(`${backendBaseUrl}/api/tracks/status/${trackIdFromUrl}`);
+        const statusRes = await axios.get(`${backendBaseUrl}/api/tracks/status/${finalTrackId}`);
         
         if (statusRes.data && statusRes.data.status !== 'not_found') {
-          // Если трек в базе, просто запускаем его (в нем уже будут метаданные из CheckStatus)
           handleTrackSelect(statusRes.data);
+        } else {
+          // Если на бэкенде нет статуса, попробуем найти его через поиск Deezer
+          throw new Error('not_found_on_backend');
         }
       } catch (err) {
-        // Шаг 2: Если 404 (трека нет в базе), ищем его в Deezer через наш API
-        if (err.response?.status === 404) {
-          try {
-            const searchRes = await axios.get(`${backendBaseUrl}/api/search/deezer?q=${trackIdFromUrl}`);
-            const found = searchRes.data.find(t => String(t.deezer_id) === String(trackIdFromUrl));
-            
-            if (found) {
-              handleTrackSelect(found);
-            } else {
-              // Крайний случай: просто кидаем ID
-              handleTrackSelect({ deezer_id: parseInt(trackIdFromUrl), title: "Загрузка..." });
-            }
-          } catch (searchErr) {
-            handleTrackSelect({ deezer_id: parseInt(trackIdFromUrl), title: "Загрузка..." });
+        // Шаг 2: Ищем в Deezer (если трек новый для системы)
+        try {
+          const searchRes = await axios.get(`${backendBaseUrl}/api/search/deezer?q=${finalTrackId}`);
+          const found = searchRes.data.find(t => String(t.deezer_id) === String(finalTrackId));
+          
+          if (found) {
+            handleTrackSelect(found);
+          } else {
+            // Фолбэк: создаем "пустышку", чтобы запустился процесс скачивания
+            handleTrackSelect({ deezer_id: parseInt(finalTrackId), title: "Загрузка трека..." });
           }
+        } catch (searchErr) {
+          handleTrackSelect({ deezer_id: parseInt(finalTrackId), title: "Загрузка..." });
         }
       }
     };
@@ -357,9 +366,13 @@ useEffect(() => {
     fetchAndPlay();
     setIsFullPlayerOpen(true);
     player.setIsPlaying(false);
-    window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+
+    // Очищаем URL, чтобы при обновлении страницы трек не запускался заново
+    if (trackIdFromUrl) {
+      window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+    }
   }
-}, [handleTrackSelect, backendBaseUrl]);
+}, [handleTrackSelect, backendBaseUrl, player.setIsPlaying]);
 
   if (!tgUser) {
     return (
