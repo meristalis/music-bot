@@ -27,7 +27,7 @@ const formatTime = (seconds) => {
 
 function App() {
   const MOBILE_BREAKPOINT = 780;
-  const backendBaseUrl = ""; // Укажи свой URL, если нужно
+  const backendBaseUrl = "https://138.124.108.4.nip.io";
 
   // --- Состояния интерфейса и данных ---
   const [now, setNow] = useState(Date.now());
@@ -46,6 +46,10 @@ function App() {
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
   const [isDownloadPanelOpen, setIsDownloadPanelOpen] = useState(false);
 
+  // Состояние темы для внешних браузеров
+  const [theme, setTheme] = useState('dark');
+  const [isTelegram, setIsTelegram] = useState(true);
+
   // --- Состояния загрузки треков ---
   const [pendingTracks, setPendingTracks] = useState({});
   const [downloadQueue, setDownloadQueue] = useState([]);
@@ -54,31 +58,120 @@ function App() {
   // Инициализация плеера через кастомный хук
   const player = useAudioPlayer(library, (track) => handleTrackSelect(track));
 
+  // --- MediaSession API (Управление из шторки уведомлений) ---
+  useEffect(() => {
+    const { 
+      currentTrack, 
+      isPlaying, 
+      setIsPlaying, 
+      playNext, 
+      playPrev, 
+      duration, 
+      currentTime,
+      audioRef 
+    } = player;
+
+    if ('mediaSession' in navigator && currentTrack) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title || 'Unknown Title',
+        artist: currentTrack.artist || 'Unknown Artist',
+        album: currentTrack.album || 'Deezer',
+        artwork: [
+          { 
+            src: currentTrack.cover_url || 'default_cover.png', 
+            sizes: '512x512', 
+            type: 'image/png' 
+          }
+        ]
+      });
+
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+      if (navigator.mediaSession.setPositionState && duration > 0) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: duration,
+            playbackRate: 1,
+            position: currentTime
+          });
+        } catch (e) {
+          console.error("PositionState update failed:", e);
+        }
+      }
+
+      navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+      navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+      
+      if (playNext) {
+        navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
+      }
+      
+      if (playPrev) {
+        navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
+      }
+
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime && audioRef?.current) {
+          audioRef.current.currentTime = details.seekTime;
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('seekbackward', () => {
+        if (audioRef?.current) audioRef.current.currentTime -= 10;
+      });
+      navigator.mediaSession.setActionHandler('seekforward', () => {
+        if (audioRef?.current) audioRef.current.currentTime += 10;
+      });
+    }
+  }, [
+    player.currentTrack, 
+    player.isPlaying, 
+    player.currentTime, 
+    player.duration
+  ]);
+
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(interval);
   }, []);
 
-  // Telegram Init + Auth
+  // Telegram Init + Auth + Theme Logic
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     const savedChatId = localStorage.getItem('custom_chat_id');
 
-    if (tg && tg.initDataUnsafe?.user) {
+    // Проверяем, запущены ли мы реально в Telegram
+    const isActuallyInTg = !!(tg && tg.initData);
+    setIsTelegram(isActuallyInTg);
+
+    if (isActuallyInTg && tg.initDataUnsafe?.user) {
       tg.ready();
-      // Устанавливаем тему в зависимости от настроек TG
-      const theme = tg.colorScheme || 'dark';
-      document.documentElement.setAttribute('data-theme', theme);
+      const tgTheme = tg.colorScheme || 'dark';
+      document.documentElement.setAttribute('data-theme', tgTheme);
+      setTheme(tgTheme);
       
       setTgUser(tg.initDataUnsafe.user);
       fetchLibrary(tg.initDataUnsafe.user.id);
-    } else if (savedChatId) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      const user = { id: savedChatId, first_name: "User " + savedChatId };
-      setTgUser(user);
-      fetchLibrary(savedChatId);
+    } else {
+      // Режим браузера
+      const savedTheme = localStorage.getItem('app_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      setTheme(savedTheme);
+
+      if (savedChatId) {
+        const user = { id: savedChatId, first_name: "User " + savedChatId };
+        setTgUser(user);
+        fetchLibrary(savedChatId);
+      }
     }
   }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('app_theme', newTheme);
+  };
 
   const handleAuth = () => {
     if (manualChatId.trim()) {
@@ -226,6 +319,46 @@ function App() {
       tg.BackButton.hide();
     }
   }, [isFullPlayerOpen]);
+      // Share track logic
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const trackIdFromUrl = params.get('track');
+  
+  if (trackIdFromUrl && handleTrackSelect) {
+    const fetchAndPlay = async () => {
+      try {
+        // Шаг 1: Проверяем, знает ли наш бэкенд этот трек
+        const statusRes = await axios.get(`${backendBaseUrl}/api/tracks/status/${trackIdFromUrl}`);
+        
+        if (statusRes.data && statusRes.data.status !== 'not_found') {
+          // Если трек в базе, просто запускаем его (в нем уже будут метаданные из CheckStatus)
+          handleTrackSelect(statusRes.data);
+        }
+      } catch (err) {
+        // Шаг 2: Если 404 (трека нет в базе), ищем его в Deezer через наш API
+        if (err.response?.status === 404) {
+          try {
+            const searchRes = await axios.get(`${backendBaseUrl}/api/search/deezer?q=${trackIdFromUrl}`);
+            const found = searchRes.data.find(t => String(t.deezer_id) === String(trackIdFromUrl));
+            
+            if (found) {
+              handleTrackSelect(found);
+            } else {
+              // Крайний случай: просто кидаем ID
+              handleTrackSelect({ deezer_id: parseInt(trackIdFromUrl), title: "Загрузка..." });
+            }
+          } catch (searchErr) {
+            handleTrackSelect({ deezer_id: parseInt(trackIdFromUrl), title: "Загрузка..." });
+          }
+        }
+      }
+    };
+
+    fetchAndPlay();
+    setIsFullPlayerOpen(true);
+    window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+  }
+}, [handleTrackSelect, backendBaseUrl]);
 
   if (!tgUser) {
     return (
@@ -233,6 +366,21 @@ function App() {
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         height: '100vh', background: 'var(--bg-color)', color: 'var(--text-color)', padding: '20px', textAlign: 'center'
       }}>
+        {/* Ползунок темы на экране входа */}
+        {!isTelegram && (
+          <div style={{ position: 'absolute', top: '20px', right: '20px' }} onClick={toggleTheme}>
+            <div style={{
+              width: '40px', height: '20px', background: 'var(--bg-surface)', borderRadius: '20px',
+              position: 'relative', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <div style={{
+                width: '16px', height: '16px', background: 'var(--accent-color)', borderRadius: '50%',
+                position: 'absolute', top: '1px', left: theme === 'dark' ? '21px' : '1px',
+                transition: 'all 0.2s ease'
+              }} />
+            </div>
+          </div>
+        )}
         <h3 style={{ marginBottom: '20px' }}>Вход в систему</h3>
         <input 
           type="text" 
@@ -257,6 +405,9 @@ function App() {
     );
   }
 
+
+
+
   return (
     <div className="app-container" style={{
       padding: '16px', paddingBottom: player.currentTrack ? '140px' : '20px',
@@ -265,6 +416,28 @@ function App() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
     }}>
       
+      {/* Ползунок темы сверху в основном интерфейсе */}
+      {!isTelegram && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+          <div onClick={toggleTheme} style={{
+             display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+             fontSize: '12px', color: 'var(--text-secondary)'
+          }}>
+            <span>{theme === 'dark' ? '🌙 Темная' : '☀️ Светлая'}</span>
+            <div style={{
+              width: '34px', height: '18px', background: 'var(--bg-surface)', borderRadius: '18px',
+              position: 'relative', border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <div style={{
+                width: '14px', height: '14px', background: 'var(--accent-color)', borderRadius: '50%',
+                position: 'absolute', top: '1px', left: theme === 'dark' ? '17px' : '1px',
+                transition: 'all 0.2s ease'
+              }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <Header 
         tgUser={tgUser}
         isDownloadPanelOpen={isDownloadPanelOpen}

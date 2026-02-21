@@ -42,7 +42,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		api.POST("/tracks/play", h.HandlePlay)
 		api.GET("/tracks/stream/:file_id", h.StreamTrack)
 		api.GET("/tracks", h.GetTracks)
-		api.GET("/search/deezer", h.SearchTracksDZ) // Новый роут
+		api.GET("/search/deezer", h.SearchTracksDZ)
 		api.POST("/tracks/like", h.HandleLike)
 		api.POST("/tracks/unlike", h.HandleUnlike)
 		api.GET("/tracks/status/:id", h.CheckStatus)
@@ -252,6 +252,9 @@ func (h *Handler) CheckStatus(c *gin.Context) {
 	response := gin.H{
 		"status":    track.Status,
 		"deezer_id": track.DeezerID,
+		"title":     track.Title,
+		"artist":    track.Artist,
+		"cover_url": track.CoverURL,
 	}
 
 	// 4. Если готов — пробуем получить ссылку
