@@ -59,76 +59,97 @@ function App() {
   const player = useAudioPlayer(library, (track) => handleTrackSelect(track));
 
   // --- MediaSession API (Управление из шторки уведомлений) ---
-  useEffect(() => {
-    const { 
-      currentTrack, 
-      isPlaying, 
-      setIsPlaying, 
-      playNext, 
-      playPrev, 
-      duration, 
-      currentTime,
-      audioRef 
-    } = player;
+useEffect(() => {
+  const { 
+    currentTrack, 
+    isPlaying, 
+    setIsPlaying, 
+    playNext, 
+    playPrev, 
+    duration, 
+    currentTime,
+    audioRef 
+  } = player;
 
-    if ('mediaSession' in navigator && currentTrack) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentTrack.title || 'Unknown Title',
-        artist: currentTrack.artist || 'Unknown Artist',
-        album: currentTrack.album || 'Deezer',
-        artwork: [
-          { 
-            src: currentTrack.cover_url || 'default_cover.png', 
-            sizes: '512x512', 
-            type: 'image/png' 
-          }
-        ]
-      });
-
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-
-      if (navigator.mediaSession.setPositionState && duration > 0) {
-        try {
-          navigator.mediaSession.setPositionState({
-            duration: duration,
-            playbackRate: 1,
-            position: currentTime
-          });
-        } catch (e) {
-          console.error("PositionState update failed:", e);
+  if ('mediaSession' in navigator && currentTrack) {
+    // 1. Устанавливаем метаданные
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentTrack.title || 'Unknown Title',
+      artist: currentTrack.artist || 'Unknown Artist',
+      album: 'Deezer Player',
+      artwork: [
+        { 
+          src: currentTrack.cover_url || 'default_cover.png', 
+          sizes: '512x512', 
+          type: 'image/png' 
         }
-      }
+      ]
+    });
 
-      navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
-      navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
-      
-      if (playNext) {
-        navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
-      }
-      
-      if (playPrev) {
-        navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
-      }
+    // 2. Статус воспроизведения
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime && audioRef?.current) {
-          audioRef.current.currentTime = details.seekTime;
-        }
-      });
-
-      navigator.mediaSession.setActionHandler('seekbackward', () => {
-        if (audioRef?.current) audioRef.current.currentTime -= 10;
-      });
-      navigator.mediaSession.setActionHandler('seekforward', () => {
-        if (audioRef?.current) audioRef.current.currentTime += 10;
-      });
+    // 3. Обновление прогресс-бара (только если числа валидны)
+    if (
+      navigator.mediaSession.setPositionState && 
+      Number.isFinite(duration) && 
+      duration > 0 &&
+      Number.isFinite(currentTime)
+    ) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: duration,
+          playbackRate: 1,
+          position: Math.min(currentTime, duration)
+        });
+      } catch (e) {
+        console.warn("MediaSession Position Error:", e);
+      }
     }
-  }, [
-    player.currentTrack, 
-    player.isPlaying, 
-    player.currentTime, 
-    player.duration
-  ]);
+
+    // 4. Обработчики кнопок
+    navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+    navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+    
+    // Важно: если функции нет, передаем null, чтобы кнопка в шторке скрылась/отключилась
+    navigator.mediaSession.setActionHandler('nexttrack', playNext ? () => playNext() : null);
+    navigator.mediaSession.setActionHandler('previoustrack', playPrev ? () => playPrev() : null);
+
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime && audioRef?.current) {
+        audioRef.current.currentTime = details.seekTime;
+      }
+    });
+
+    // Очистка при размонтировании
+    return () => {
+      navigator.mediaSession.setActionHandler('play', null);
+      navigator.mediaSession.setActionHandler('pause', null);
+      navigator.mediaSession.setActionHandler('nexttrack', null);
+      navigator.mediaSession.setActionHandler('previoustrack', null);
+    };
+  }
+}, [
+  player.currentTrack, 
+  player.isPlaying, 
+  // Мы специально НЕ добавляем player.currentTime в зависимости, 
+  // чтобы не пересоздавать обработчики каждую секунду. 
+  // Синхронизацию позиции лучше вынести в отдельный useEffect.
+  player.duration 
+]);
+
+useEffect(() => {
+  if ('mediaSession' in navigator && navigator.mediaSession.setPositionState && 
+      player.duration > 0 && Number.isFinite(player.currentTime)) {
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: player.duration,
+        playbackRate: 1,
+        position: player.currentTime
+      });
+    } catch (e) {}
+  }
+}, [player.currentTime, player.duration]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 100);
@@ -320,33 +341,31 @@ function App() {
     }
   }, [isFullPlayerOpen]);
       // Share track logic
+const wasLinkProcessed = useRef(false);
+
 useEffect(() => {
+  // Если мы уже обработали ссылку, выходим
+  if (wasLinkProcessed.current) return;
+
   const tg = window.Telegram?.WebApp;
-  
-  // 1. Пытаемся достать ID из параметров Telegram (startapp)
   const startParam = tg?.initDataUnsafe?.start_param;
-  
-  // 2. Пытаемся достать ID из обычной адресной строки (?track=)
   const params = new URLSearchParams(window.location.search);
   const trackIdFromUrl = params.get('track');
 
-  // Итоговый ID: приоритет у Telegram, если его нет — берем из URL
   const finalTrackId = startParam || trackIdFromUrl;
   
-  if (finalTrackId && handleTrackSelect) {
+  // Добавляем проверку, что tgUser загружен, иначе handleTrackSelect может не сработать корректно
+  if (finalTrackId && tgUser) {
     const fetchAndPlay = async () => {
       try {
-        // Шаг 1: Проверяем, знает ли наш бэкенд этот трек
         const statusRes = await axios.get(`${backendBaseUrl}/api/tracks/status/${finalTrackId}`);
         
         if (statusRes.data && statusRes.data.status !== 'not_found') {
           handleTrackSelect(statusRes.data);
         } else {
-          // Если на бэкенде нет статуса, попробуем найти его через поиск Deezer
           throw new Error('not_found_on_backend');
         }
       } catch (err) {
-        // Шаг 2: Ищем в Deezer (если трек новый для системы)
         try {
           const searchRes = await axios.get(`${backendBaseUrl}/api/search/deezer?q=${finalTrackId}`);
           const found = searchRes.data.find(t => String(t.deezer_id) === String(finalTrackId));
@@ -354,7 +373,6 @@ useEffect(() => {
           if (found) {
             handleTrackSelect(found);
           } else {
-            // Фолбэк: создаем "пустышку", чтобы запустился процесс скачивания
             handleTrackSelect({ deezer_id: parseInt(finalTrackId), title: "Загрузка трека..." });
           }
         } catch (searchErr) {
@@ -365,15 +383,17 @@ useEffect(() => {
 
     fetchAndPlay();
     setIsFullPlayerOpen(true);
-    player.setIsPlaying(false);
+    
+    // Помечаем, что ссылка обработана
+    wasLinkProcessed.current = true;
 
-    // Очищаем URL, чтобы при обновлении страницы трек не запускался заново
+    // Очищаем URL
     if (trackIdFromUrl) {
       window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
     }
   }
-}, [handleTrackSelect, backendBaseUrl, player.setIsPlaying]);
-
+  // Убираем player.setIsPlaying из зависимостей, так как нам нужно запустить это ОДИН РАЗ при загрузке
+}, [tgUser, handleTrackSelect, backendBaseUrl]);
   if (!tgUser) {
     return (
       <div style={{

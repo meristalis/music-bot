@@ -69,6 +69,7 @@ prod-logs:
 
 # Полный цикл деплоя
 prod-deploy:
+	git pull
 	$(COMPOSE_PROD) pull  # Подтягиваем обновленные базовые образы
 	$(COMPOSE_PROD) down
 	docker system prune -af
