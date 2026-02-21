@@ -294,24 +294,22 @@ const FullPlayer = ({
       `}</style>
 
       {/* ФОН */}
-      <div style={{ 
-        ...styles.backgroundBlur, 
-        backgroundImage: `url(${currentTrack.cover_url})`,
-        filter: `blur(80px) brightness(${isDark ? '0.6' : '1.0'}) saturate(3.5)`,
-        opacity: 1,
-        animation: 'fadeIn 1s ease'
-      }} />
+ <div style={{ 
+  ...styles.backgroundBlur, 
+  backgroundImage: `url(${currentTrack.cover_url})`,
+  filter: `blur(80px) brightness(var(--bg-brightness)) saturate(var(--bg-saturate))`,
+  opacity: `var(--bg-blur-opacity)`,
+  animation: 'fadeIn 1s ease'
+}} />
 
-      <div style={{
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        background: isDark 
-            ? 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%)' 
-            : 'linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.6) 100%)',
-        backdropFilter: 'blur(30px)',
-        WebkitBackdropFilter: 'blur(30px)',
-        zIndex: -1
-      }} />
+<div style={{
+  position: 'absolute',
+  top: 0, left: 0, right: 0, bottom: 0,
+  background: `var(--bg-overlay-gradient)`, // Градиент тоже из CSS
+  backdropFilter: 'blur(30px)',
+  WebkitBackdropFilter: 'blur(30px)',
+  zIndex: -1
+}} />
       
       {/* ВЕРХНЯЯ ПАНЕЛЬ С КНОПКАМИ (Громкость, Текст, Закрыть) */}
       <div style={styles.headerRow}>
@@ -349,35 +347,34 @@ const FullPlayer = ({
       <div style={styles.contentContainer}>
         <div style={styles.topArea}>
             <div style={styles.visualStack}>
-              {/* СЛОЙ ОБЛОЖКИ */}
-              <div 
-                className="visual-layer"
-                style={{ 
-                  transform: showLyrics ? 'translateY(-110%)' : 'translateY(0)',
-                  opacity: showLyrics ? 0 : 1,
-                  pointerEvents: showLyrics ? 'none' : 'auto',
-                }}
-              >
-                <div style={styles.coverView}>
-                  <div style={styles.coverContainer}>
-                     <div style={styles.coverResponsiveBox}>
-                        <img 
-                            src={currentTrack.cover_url} 
-                            style={{...styles.coverImg, position: 'absolute', filter: 'blur(40px) opacity(0.5)', transform: 'translateY(15px) scale(0.95)'}} 
-                            alt="" 
-                        />
-                        <img 
-                            src={currentTrack.cover_url} 
-                            style={styles.coverImg} 
-                            alt={currentTrack.title} 
-                        />
-                        <button onClick={handleShare} style={styles.shareOnCover} className="icon-center">
-                            <Share size={20} style={{ transform: 'scaleX(-1)' }} />
-                        </button>
-                     </div>
-                  </div>
-                </div>
-              </div>
+              {/* СЛОЙ ОБЛОЖКИ — без теней и лишних слоев */}
+<div 
+  className="visual-layer"
+  style={{ 
+    transform: showLyrics ? 'translateY(-110%)' : 'translateY(0)',
+    opacity: showLyrics ? 0 : 1,
+    pointerEvents: showLyrics ? 'none' : 'auto',
+  }}
+>
+  <div style={styles.coverView}>
+    <div style={styles.coverContainer}>
+       <div style={styles.coverResponsiveBox}>
+          {/* Мы удалили вторую картинку с блюром, которая была тут */}
+          <img 
+             src={currentTrack.cover_url} 
+    style={{
+      ...styles.coverImg,
+      boxShadow: `var(--cover-shadow)`, // Тень теперь зависит от темы
+    }} 
+    alt={currentTrack.title}
+          />
+          <button onClick={handleShare} style={styles.shareOnCover} className="icon-center">
+              <Share size={20} style={{ transform: 'scaleX(-1)' }} />
+          </button>
+       </div>
+    </div>
+  </div>
+</div>
 
               {/* СЛОЙ ТЕКСТА */}
               <div 
@@ -451,28 +448,28 @@ const FullPlayer = ({
             <div style={styles.controlsWrapper}>
               <div className="icon-center" style={styles.sideControlBox}>
                 <Shuffle 
-                  size="26px" 
+                  size="24px" 
                   onClick={() => setIsShuffle(!isShuffle)} 
                   style={{ color: isShuffle ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer', opacity: isShuffle ? 1 : 0.6 }} 
                 />
               </div>
               
               <div className="icon-center" style={styles.stepControlBox}>
-                <SkipBack size="45px" fill="currentColor" onClick={handlePrev} style={styles.controlIcon} />
+                <SkipBack size="42px" fill="currentColor" onClick={handlePrev} style={styles.controlIcon} />
               </div>
               
               <div className="icon-center" style={styles.playControlBox}>
                 <div onClick={togglePlay} style={styles.playButtonRaw} className="icon-center">
-                    {isPlaying ? <Pause size="80" fill="currentColor" stroke="none" /> : <Play size="80" fill="currentColor" stroke="none" />}
+                    {isPlaying ? <Pause size="75" fill="currentColor" stroke="none" /> : <Play size="75" fill="currentColor" stroke="none" />}
                 </div>
               </div>
               
               <div className="icon-center" style={styles.stepControlBox}>
-                <SkipForward size="45px" fill="currentColor" onClick={handleNext} style={styles.controlIcon} />
+                <SkipForward size="42px" fill="currentColor" onClick={handleNext} style={styles.controlIcon} />
               </div>
               
               <div className="icon-center" onClick={toggleRepeat} style={{ ...styles.sideControlBox, color: repeatMode !== 'none' ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer', opacity: repeatMode !== 'none' ? 1 : 0.6 }}>
-                {repeatMode === 'one' ? <Repeat1 size="28px" /> : <Repeat size="28px" />}
+                {repeatMode === 'one' ? <Repeat1 size="26px" /> : <Repeat size="26px" />}
               </div>
             </div>
           </div>
@@ -517,7 +514,7 @@ const styles = {
     width: '100%', maxWidth: '85vw', aspectRatio: '1/1', maxHeight: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   coverImg: { 
-    width: '100%', height: '100%', borderRadius: '24px', objectFit: 'cover', boxShadow: '0 20px 60px rgba(0,0,0,0.45)', 
+    width: '100%', height: '100%', borderRadius: '24px', objectFit: 'cover', 
   },
   shareOnCover: {
     position: 'absolute', top: '15px', right: '15px', background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(10px)', border: 'none', color: '#fff', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', zIndex: 5, outline: 'none'
