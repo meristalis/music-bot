@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Heart, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Repeat1, ChevronUp, ChevronDown, Volume2, Share } from 'lucide-react';
+import axios from 'axios';
 
 // --- КОМПОНЕНТ ДЛЯ ТЕКСТА С КЭШИРОВАНИЕМ ---
 const LyricsView = ({ currentTrack, currentTime, audioRef, isActive }) => {
@@ -104,7 +105,8 @@ const FullPlayer = ({
   isOpen, currentTrack, onClose, isPlaying, togglePlay,
   currentTime, setCurrentTime, duration, formatTime,
   audioRef, handleNext, handlePrev, isShuffle, setIsShuffle,
-  repeatMode, toggleRepeat, handleLike, favoriteTrackIds
+  repeatMode, toggleRepeat, handleLike, favoriteTrackIds,onArtistClick,
+  backendBaseUrl
 }) => {
   const [showLyrics, setShowLyrics] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -187,147 +189,148 @@ const FullPlayer = ({
 
   return (
     <div style={styles.overlay}>
-      <style>{`
+<style>{`
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  
+  .visual-layer {
+    transition: transform 0.6s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.5s ease;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+  }
 
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .visual-layer {
-          transition: transform 0.6s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.5s ease;
-          position: absolute;
-          top: 0; left: 0; right: 0; bottom: 0;
-          display: flex;
-          flex-direction: column;
-        }
+  .lyric-line { transition: all 0.4s ease; cursor: pointer; color: var(--text-primary); }
+  .lyric-line.active { 
+    color: var(--text-primary); 
+    text-shadow: 0 0 15px var(--lyric-shadow); 
+  }
 
-        .lyric-line { transition: all 0.4s ease; cursor: pointer; color: var(--text-primary); }
-        .lyric-line.active { 
-          color: var(--text-primary); 
-          text-shadow: 0 0 15px var(--lyric-shadow); 
-        }
+  .header-btn {
+    color: var(--text-primary);
+    opacity: 0.8;
+    cursor: pointer;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .header-btn:active { transform: scale(0.9); }
 
-        .header-btn {
-          color: var(--text-primary);
-          opacity: 0.8;
-          cursor: pointer;
-          transition: transform 0.2s ease, opacity 0.2s ease;
-        }
-        .header-btn:active { transform: scale(0.9); }
-
-        .ios-volume-popover {
-          position: absolute;
-          top: 45px;
-          left: 0;
-          background: rgba(255, 255, 255, 0.25);
-          backdrop-filter: blur(25px);
-          -webkit-backdrop-filter: blur(25px);
-          width: 36px;
-          height: 140px;
-          border-radius: 10px;
-          overflow: hidden;
-          animation: slideDown 0.2s ease-out;
-          z-index: 100;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-          border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .ios-volume-track {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          flex-direction: column-reverse;
-        }
-
-        .ios-volume-fill {
-          width: 100%;
-          background: #fff;
-          transition: height 0.1s ease-out;
-        }
-
-        .ios-volume-input {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 140px;
-          height: 36px;
-          appearance: none;
-          -webkit-appearance: none;
-          background: transparent;
-          transform: rotate(-90deg) translateX(-140px);
-          transform-origin: top left;
-          cursor: pointer;
-          margin: 0;
-          z-index: 5;
-        }
-
-        /* ... ваши существующие стили ... */
+  .progress-wrapper {
+  padding: 12px 0;
+  width: 100%;
+  cursor: pointer;
+}
 
 .track-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px; /* Чуть увеличим высоту для удобства */
-  border-radius: 10px;
-  background: var(--progress-bg);
-  cursor: pointer;
+  height: 4px; /* Тонкая полоска */
+  border-radius: 2px;
   outline: none;
-  transition: all 0.2s ease;
-  position: relative;
+  background: transparent; /* Фон берется из inline градиента */
+  transition: height 0.2s ease;
+  cursor: pointer;
 }
 
-/* Стили для Chrome, Safari, Edge */
+/* При наведении полоска становится чуть толще, чтобы было легче попасть */
+.progress-wrapper:hover .track-slider {
+  height: 6px;
+}
+
+/* СКРЫВАЕМ ПОЛЗУНОК НАВСЕГДА (Chrome, Safari, iOS, Edge) */
 .track-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  height: 14px;
-  width: 14px;
-  border-radius: 50%;
-  background: #fff;
-  border: 3px solid var(--accent-color); /* Кольцо вокруг белой точки */
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
-  opacity: 0; /* Скрываем в обычном состоянии */
-}
-
-/* Показываем ползунок при наведении на весь контейнер или при активном использовании */
-.progress-wrapper:hover .track-slider::-webkit-slider-thumb,
-.track-slider:active::-webkit-slider-thumb {
-  opacity: 1;
-  transform: scale(1.2);
-}
-
-/* Стили для Firefox */
-.track-slider::-moz-range-thumb {
-  height: 14px;
-  width: 14px;
-  border-radius: 50%;
-  background: #fff;
-  border: 3px solid var(--accent-color);
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
-  border: none;
+  width: 0;
+  height: 0;
+  display: none; /* Полное удаление из рендеринга */
   opacity: 0;
-  transition: transform 0.2s ease, opacity 0.2s;
 }
 
-.progress-wrapper:hover .track-slider::-moz-range-thumb,
-.track-slider:active::-moz-range-thumb {
-  opacity: 1;
-  transform: scale(1.2);
+/* СКРЫВАЕМ ПОЛЗУНОК НАВСЕГДА (Firefox) */
+.track-slider::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  display: none;
+  opacity: 0;
+  border: none;
 }
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        .icon-center {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          outline: none !important;
-          -webkit-tap-highlight-color: transparent;
-        }
-      `}</style>
+/* Убираем любые эффекты при нажатии, которые могли остаться */
+.track-slider:active::-webkit-slider-thumb {
+  opacity: 0;
+  display: none;
+}
+  /* Остальные стили интерфейса */
+  .ios-volume-popover {
+    position: absolute; top: 45px; left: 0;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+    width: 36px; height: 140px; border-radius: 10px; overflow: hidden;
+    animation: slideDown 0.2s ease-out; z-index: 100;
+  }
+  .ios-volume-track { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column-reverse; }
+  .ios-volume-fill { width: 100%; background: #fff; transition: height 0.1s ease-out; }
+  /* РЕГУЛИРОВКА ГРОМКОСТИ: СКРЫВАЕМ КРУЖОК */
+  .ios-volume-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 0;
+    height: 0;
+    display: none;
+    opacity: 0;
+  }
+
+  .ios-volume-input::-moz-range-thumb {
+    width: 0;
+    height: 0;
+    display: none;
+    opacity: 0;
+    border: none;
+  }
+
+  /* Обновленный стиль самого контейнера громкости для чистоты */
+  .ios-volume-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 140px; /* Длина совпадает с высотой поповера */
+    height: 36px; /* Ширина поповера */
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    transform: rotate(-90deg) translateX(-140px);
+    transform-origin: top left;
+    cursor: pointer;
+    margin: 0;
+    z-index: 5;
+    outline: none;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .icon-center { display: flex; align-items: center; justify-content: center; outline: none; }
+  
+  .artist-clickable { 
+    cursor: pointer; 
+    text-decoration: underline; /* Обычное подчеркивание */
+    text-underline-offset: 4px;  /* Небольшой отступ, чтобы линия не резала буквы g, j, p, y */
+    transition: opacity 0.2s ease;
+  }
+
+  .artist-clickable:hover {
+    opacity: 1;
+    text-decoration-thickness: 2px; /* Чуть жирнее при наведении для акцента */
+  }
+
+  .artist-clickable:active {
+    opacity: 0.6;
+  }
+
+  /* Обязательно удали старый эффект, если он остался */
+  .artist-clickable::after {
+    display: none !important;
+  }
+`}</style>
 
       {/* ФОН */}
  <div style={{ 
@@ -435,47 +438,82 @@ const FullPlayer = ({
             </div>
 
             <div style={styles.trackInfoWrapper}>
-              <div style={{ flex: 1, overflow: 'hidden', paddingRight: '15px' }}>
-                <h2 style={styles.title}>{currentTrack.title}</h2>
-                <p style={styles.artist}>{currentTrack.artist}</p>
-              </div>
-              <div className="icon-center" style={{ width: 42, height: 42 }}>
-                <Heart
-                  size={32}
-                  onClick={() => handleLike(currentTrack)}
-                  fill={isLiked ? "var(--accent-color)" : "none"}
-                  stroke={isLiked ? "var(--accent-color)" : "var(--text-primary)"}
-                  strokeWidth={2}
-                  style={{ 
-                    cursor: 'pointer',
-                    opacity: isLiked ? 1 : 0.8,
-                    transition: 'all 0.3s ease',
-                    display: 'block'
-                  }}
-                />
-              </div>
-            </div>
+  <div style={{ flex: 1, overflow: 'hidden', paddingRight: '15px' }}>
+    <h2 style={styles.title}>{currentTrack.title}</h2>
+<p 
+  style={styles.artist} 
+  className="artist-clickable"
+  onClick={async (e) => {
+    e.stopPropagation();
+    
+    let targetArtistId = currentTrack.artist_id || currentTrack.artist?.id;
+
+    if (!targetArtistId && currentTrack.artist) {
+      try {
+        // Запрос к твоему бэкенду для поиска артиста по имени
+        const response = await axios.get(`${backendBaseUrl}/api/search/artist?q=${encodeURIComponent(currentTrack.artist)}`);
+        const artists = response.data;
+
+        if (Array.isArray(artists) && artists.length > 0) {
+          // Берем ID из первого результата
+          targetArtistId = artists[0].id || artists[0].deezer_id;
+        }
+      } catch (err) {
+        // Оставляем только системную ошибку в консоли на случай падения сети
+        console.error("Artist search failed", err);
+      }
+    }
+
+    if (onArtistClick && targetArtistId) {
+      onArtistClick(targetArtistId);
+      onClose();
+    }
+  }}
+>
+  {typeof currentTrack.artist === 'object' ? currentTrack.artist.name : currentTrack.artist}
+</p>
+  </div>
+  <div className="icon-center" style={{ width: 42, height: 42 }}>
+    <Heart
+      size={32}
+      onClick={() => handleLike(currentTrack)}
+      fill={isLiked ? "var(--accent-color)" : "none"}
+      stroke={isLiked ? "var(--accent-color)" : "var(--text-primary)"}
+      strokeWidth={2}
+      style={{ 
+        cursor: 'pointer',
+        opacity: isLiked ? 1 : 0.8,
+        transition: 'all 0.3s ease',
+        display: 'block'
+      }}
+    />
+  </div>
+</div>
         </div>
 
         <div style={styles.bottomArea}>
           <div style={styles.progressWrapper} className="progress-wrapper">
-    <input
-      type="range"
-      min="0"
-      max={duration || 0}
-      value={currentTime}
-      className="track-slider"
-      onChange={(e) => {
-        const val = Number(e.target.value);
-        if (audioRef.current) { 
-          audioRef.current.currentTime = val; 
-          setCurrentTime(val); 
-        }
-      }}
-      style={{
-        background: `linear-gradient(to right, var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, var(--progress-bg) ${(currentTime / (duration || 1)) * 100}%)`
-      }}
-    />
+<input
+  type="range"
+  min="0"
+  max={duration || 0}
+  value={currentTime}
+  className="track-slider"
+  onChange={(e) => {
+    const val = Number(e.target.value);
+    if (audioRef.current) { 
+      audioRef.current.currentTime = val; 
+      setCurrentTime(val); 
+    }
+  }}
+  style={{
+    background: `linear-gradient(to right, 
+      var(--accent-color) 0%, 
+      var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, 
+      rgba(200, 200, 200, 0.2) ${(currentTime / (duration || 1)) * 100}%, 
+      rgba(200, 200, 200, 0.2) 100%)`
+  }}
+/>
     <div style={styles.timeInfo}>
       <span>{formatTime(currentTime)}</span>
       <span>{formatTime(duration)}</span>

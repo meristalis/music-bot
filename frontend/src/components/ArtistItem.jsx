@@ -80,16 +80,7 @@ export const ArtistsSection = ({ artists, onArtistClick }) => {
   if (!artists || artists.length === 0) return null;
 
   return (
-    <div style={{ marginBottom: '24px' }}>
-      <h3 style={{ 
-        fontSize: '18px', 
-        fontWeight: '700', 
-        marginBottom: '14px', 
-        paddingLeft: '4px',
-        color: 'var(--text-primary)' 
-      }}>
-        Артисты
-      </h3>
+    <div>
       <div 
         ref={scrollRef}
         className="custom-horizontal-scroll"

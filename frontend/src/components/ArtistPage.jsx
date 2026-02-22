@@ -1,19 +1,11 @@
-import React, { useState, useEffect } from 'react'; // ОБЯЗАТЕЛЬНО
-import axios from 'axios'; // ОБЯЗАТЕЛЬНО
-import TrackItem from './TrackItem';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import TrackItem, { TracksContainer } from './TrackItem';
 import AlbumItem, { AlbumsSection } from './AlbumItem';
 
-
 const ArtistPage = ({ 
-  artistId, 
-  backendBaseUrl, 
-  onBack, 
-  onTrackSelect, 
-  onAlbumClick, // передаем функцию для поиска по альбому
-  currentTrack, 
-  isPlaying, 
-  pendingTracks, 
-  now 
+  artistId, backendBaseUrl, onBack, onTrackSelect, onAlbumClick, 
+  currentTrack, isPlaying, pendingTracks, now 
 }) => {
   const [artist, setArtist] = useState(null);
   const [topTracks, setTopTracks] = useState([]);
@@ -33,174 +25,190 @@ const ArtistPage = ({
         setTopTracks(top.data);
         setAlbums(alb.data);
       } catch (err) {
-        console.error("Failed to fetch artist data", err);
+        console.error("Fetch error:", err);
       } finally {
         setLoading(false);
       }
     };
     fetchArtistData();
     
-    // Скролл вверх при открытии страницы артиста
-    window.scrollTo(0, 0);
+    const container = document.querySelector('.artist-page-scroll-container');
+    if (container) container.scrollTop = 0;
   }, [artistId, backendBaseUrl]);
 
-  if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '50px', color: 'var(--text-secondary)' }}>
-      Загрузка...
-    </div>
-  );
-  
+  if (loading) return <div className="loader">Загрузка...</div>;
   if (!artist) return null;
 
   return (
-    <div className="artist-page-container">
-      {/* Шапка: Hero-секция в стиле Spotify/Twitter */}
-      <div 
-        className="artist-hero" 
-        style={{ 
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.2), var(--bg-color)), url(${artist.picture_xl})` 
-        }}
-      >
-        <button className="artist-back-btn" onClick={onBack}>✕</button>
+    <div className="artist-page-scroll-container">
+        <button className="artist-close-btn" onClick={onBack}>✕</button>
+      {/* Ограничивающий контейнер, как в App.js */}
+      <div className="artist-page-content">
         
-        <div className="artist-hero-info">
-          <img src={artist.picture_medium} alt={artist.name} className="artist-profile-pic" />
-          <div className="artist-text-meta">
-            <span className="verified-badge">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#3d91f4" style={{marginRight: '4px'}}>
-                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1.9 14.6L6.3 12.8l1.4-1.4 2.4 2.4 5.6-5.6 1.4 1.4-7 7z"/>
-              </svg>
-              Подтвержденный артист
-            </span>
-            <h1 className="artist-main-name">{artist.name}</h1>
-            <p className="artist-fans">{Number(artist.nb_fan).toLocaleString()} слушателей</p>
+        {/* 1. Фоновая обложка (Banner) */}
+        <div 
+          className="artist-banner" 
+          style={{ backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, var(--bg-color) 100%), url(${artist.picture_xl})` }}
+        >
+          
+          
+          <div className="banner-content">
+             <div className="avatar-wrapper">
+                <img src={artist.picture_medium} alt={artist.name} className="artist-avatar-circle" />
+             </div>
+             <div className="artist-info-block">
+                <span className="verified-label">✓ Подтвержденный артист</span>
+                <h1 className="artist-title">{artist.name}</h1>
+                <p className="stats">{Number(artist.nb_fan).toLocaleString()} слушателей</p>
+             </div>
           </div>
         </div>
+
+        {/* 2. Основной контент */}
+        <div className="artist-content-body">
+          <section className="tracks-section">
+  <h2 className="section-title">Популярные треки</h2>
+  <TracksContainer>
+    {topTracks.slice(0, 10).map((track, index) => (
+      /* Добавляем width: 100% для строки */
+      <div key={track.id || track.deezer_id} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+        <span className="index-num">{index + 1}</span>
+        
+        {/* Добавляем flex: 1, чтобы трек заполнил всю оставшуюся ширину после номера */}
+        <div style={{ flex: 1, minWidth: 0 }}> 
+          <TrackItem 
+            track={{ ...track, deezer_id: track.deezer_id || track.id }}
+            isActive={currentTrack?.deezer_id === (track.deezer_id || track.id)}
+            isPlaying={isPlaying}
+            pendingData={pendingTracks[track.deezer_id || track.id]}
+            now={now}
+            onClick={onTrackSelect}
+          />
+        </div>
       </div>
+    ))}
+  </TracksContainer>
+</section>
 
-      <div className="artist-body-content">
-        {/* Секция популярных треков: используем твой TrackItem */}
-        <section className="artist-section">
-          <h2 className="section-h">Популярно</h2>
-          <div className="top-tracks-grid">
-            {topTracks.slice(0, 5).map((track, index) => (
-              <div key={track.deezer_id} style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ width: '24px', flexShrink: 0, color: 'var(--text-secondary)', fontSize: '14px', fontWeight: '500' }}>
-                  {index + 1}
-                </span>
-                <div style={{ flex: 1 }}>
-                  <TrackItem 
-                    track={{
-                      ...track,
-                      // Нормализация: топ-треки из эндпоинта артиста иногда имеют поле id вместо deezer_id
-                      deezer_id: track.deezer_id || track.id 
-                    }}
-                    isActive={currentTrack?.deezer_id === (track.deezer_id || track.id)}
-                    isPlaying={isPlaying}
-                    pendingData={pendingTracks[track.deezer_id || track.id]}
-                    now={now}
-                    onClick={onTrackSelect}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Секция альбомов: используем твой AlbumItem */}
-        <section className="artist-section" style={{ marginTop: '20px' }}>
-  {/* Передаем имя артиста каждому альбому перед тем, как отдать компоненту */}
+          {/* Внутри ArtistPage.js */}
+<section className="albums-section">
+  <h2 className="section-title">Альбомы</h2>
   <AlbumsSection 
-    albums={albums.map(alb => ({
-      ...alb,
-      artist_name: artist.name 
-    }))} 
-    onAlbumClick={onAlbumClick} 
+    // Мы прокидываем массив альбомов
+    albums={albums.map(a => ({ ...a, artist_name: artist.name }))} 
+    // При клике берем только ID и отправляем его в App.js
+    onAlbumClick={(album) => onAlbumClick(album.id)} 
   />
 </section>
+        </div>
+        
       </div>
 
       <style>{`
-  .artist-page-container {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+        /* Внешний слой на весь экран */
+        .artist-page-scroll-container {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
     background: var(--bg-color);
-    z-index: 999;
+    /* Выше основного контента, но ниже альбома */
+    z-index: 1000; 
     overflow-y: auto;
-    padding-bottom: 150px;
-    /* Добавляем твой стиль вертикального скролла */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
   }
 
-  /* Красивый вертикальный скролл страницы на ПК */
-  .artist-page-container::-webkit-scrollbar {
-    width: 6px;
-  }
-  .artist-page-container::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .artist-page-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-  }
-  .artist-page-container:hover::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-  }
+        /* ОГРАНИЧЕНИЕ ШИРИНЫ И ЦЕНТРИРОВАНИЕ */
+        .artist-page-content {
+          max-width: 800px; /* Согласуется с вашим MOBILE_BREAKPOINT или дизайном */
+          margin: 0 auto;
+          min-height: 100%;
+          background: var(--bg-color);
+          padding-bottom: 120px;
+          position: relative;
+        }
 
-  /* Скрываем вертикальный скролл на мобилках */
-  @media (hover: none) {
-    .artist-page-container::-webkit-scrollbar {
-      display: none;
-    }
-  }
+        .artist-banner {
+          position: relative;
+          width: 100%;
+          height: 380px;
+          background-size: cover;
+          background-position: center;
+          display: flex;
+          align-items: flex-end;
+          padding: 24px;
+        }
 
-  .artist-hero {
-    height: 320px;
-    background-size: cover;
-    background-position: center;
-    display: flex;
-    align-items: flex-end;
-    padding: 20px;
-    position: relative;
-  }
-  .artist-back-btn {
-    position: absolute;
-    top: 20px; right: 20px;
-    background: rgba(0,0,0,0.5);
-    border: none; color: white;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    z-index: 10;
-  }
-  .artist-profile-pic {
-    width: 90px; height: 90px;
-    border-radius: 50%;
-    object-fit: cover;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    margin-bottom: 10px;
-  }
-  .artist-main-name {
-    font-size: 32px;
-    font-weight: 800;
-    margin: 0;
-    color: white;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-  }
-  .verified-badge {
-    display: flex; align-items: center;
-    font-size: 12px; color: white; font-weight: 600;
-    margin-bottom: 4px;
-  }
-  .artist-fans {
-    font-size: 13px; color: rgba(255,255,255,0.8); margin: 4px 0 0;
-  }
-  .artist-section { padding: 20px 16px 0; }
-  .section-h { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+        .artist-close-btn {
+  position: fixed; /* Фиксирует кнопку на экране */
+  top: 20px;
+  /* Центрируем относительно max-width контента */
+  right: 20px; 
+  
+  width: 40px; 
+  height: 40px; 
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5); 
+  backdrop-filter: blur(10px); /* Добавим эффект стекла для красоты */
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff; 
+  font-size: 20px; 
+  cursor: pointer;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  z-index: 1100; /* Выше чем баннер и все остальное */
+  transition: all 0.2s ease;
+}
 
-`}</style>
+/* На больших экранах, чтобы кнопка не прилипала к краю окна браузера, 
+а держалась края контента (800px) */
+@media (min-width: 840px) {
+  .artist-close-btn {
+    right: calc(50% - 380px); /* 400px (половина контента) - 20px отступ */
+  }
+}
+
+.artist-close-btn:active { 
+  transform: scale(0.9); 
+  background: rgba(0, 0, 0, 0.8);
+}
+
+        .banner-content { display: flex; align-items: center; gap: 20px; width: 100%; }
+
+        .artist-avatar-circle {
+          width: 100px; height: 100px; border-radius: 50%;
+          object-fit: cover; border: 4px solid rgba(255,255,255,0.1);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .artist-title {
+          font-size: clamp(24px, 8vw, 42px);
+          font-weight: 900; margin: 4px 0; color: #fff;
+          line-height: 1.1;
+        }
+
+        .verified-label { font-size: 12px; color: #3d91ff; font-weight: bold; }
+        .stats { color: rgba(255,255,255,0.7); font-size: 14px; margin: 0; }
+
+        .artist-content-body { padding: 0 16px; }
+
+        .section-title { font-size: 20px; margin: 30px 0 15px; font-weight: 700; }
+
+        .index-num {
+          width: 35px;
+          flex-shrink: 0;
+          color: var(--text-secondary);
+          font-size: 14px;
+          text-align: center;
+        }
+
+        .loader {
+          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          color: #fff; font-size: 18px;
+        }
+      `}</style>
     </div>
   );
 };

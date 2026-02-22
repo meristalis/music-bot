@@ -159,56 +159,33 @@ export const TracksContainer = ({ children, maxHeight = 'none' }) => {
     <div className="custom-tracks-scroll">
       {children}
       
-<style>{`
+      <style>{`
         .custom-tracks-scroll {
-          display: flex;
-          flex-direction: column;
+          /* Основные настройки скролла */
+          display: block;           /* Поменял с flex на block для стабильности скролла */
           overflow-y: auto;
           overflow-x: hidden;
           max-height: ${maxHeight};
-          padding-right: 4px;
+          
+          /* Плавность и тач-события */
           scroll-behavior: smooth;
           -webkit-overflow-scrolling: touch;
-          flex-shrink: 1;
-          min-height: 0;
+          
+          /* Убираем возможные конфликты флексов */
+          width: 100%;
+          position: relative;
         }
 
-        /* 1. Базовый стиль: делаем скроллбар невидимым по умолчанию */
+        /* Полное скрытие скроллбара для всех браузеров */
         .custom-tracks-scroll::-webkit-scrollbar {
-          width: 6px;
-          transition: all 0.2s ease;
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
         }
 
-        .custom-tracks-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        /* 2. Скрытый бегунок */
-        .custom-tracks-scroll::-webkit-scrollbar-thumb {
-          background: transparent; /* Полностью прозрачный */
-          border-radius: 10px;
-          transition: background 0.2s ease;
-        }
-
-        /* 3. Показываем плашку ТОЛЬКО при наведении на контейнер */
-        .custom-tracks-scroll:hover::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.15);
-        }
-
-        /* 4. Делаем ярче, когда тянем саму плашку */
-        .custom-tracks-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* Скрытие на мобилках (там он системный и мешает) */
-        @media (hover: none) {
-          .custom-tracks-scroll::-webkit-scrollbar {
-            display: none;
-          }
-          .custom-tracks-scroll {
-            scrollbar-width: none;
-            padding-right: 0;
-          }
+        .custom-tracks-scroll {
+          scrollbar-width: none;      /* Firefox */
+          -ms-overflow-style: none;   /* IE/Edge */
         }
       `}</style>
     </div>

@@ -1,51 +1,53 @@
-/* --- Базовые сбросы и исправления мобильных артефактов --- */
+/* --- 1. Глобальная унификация скроллбаров --- */
+
+/* Скрываем для всех элементов в приложении */
 * {
-  /* Убираем то самое синее выделение (Tap Highlight) */
   -webkit-tap-highlight-color: transparent;
-  
-  /* Убираем стандартный контур фокуса, так как мы сами управляем состояниями */
   outline: none;
-  
-  /* Делаем бокс-модель предсказуемой */
   box-sizing: border-box;
+  
+  /* Firefox */
+  scrollbar-width: none; 
+  /* IE/Edge */
+  -ms-overflow-style: none; 
 }
+
+/* Скрываем для Chrome, Safari, Opera и Telegram In-App */
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* --- 2. Базовые сбросы --- */
 
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--bg-color); /* Добавь это */
+  background-color: var(--bg-color);
   user-select: none;
   -webkit-user-select: none;
-  height: 100%;
-  overflow: hidden; /* Чтобы не было двойного скролла с контейнерами */
+  height: 100vh;
+  overflow: hidden; /* Основное окно не скроллится, скроллят только внутренние контейнеры */
 }
 
 input {
-  /* Разрешаем выделение текста в инпутах, чтобы можно было редактировать поиск */
   user-select: text;
   -webkit-user-select: text;
 }
 
-/* --- Переменные темы --- */
+/* --- 3. Переменные темы (без изменений) --- */
 :root {
   --brand-pink: #ff6b81;
   --bg-color: #ffffff;
   --bg-surface: #f4f4f4; 
   --text-color: #1a1a1a;
-
   --accent-color: var(--brand-pink);
   --text-primary: var(--text-color);
   --text-secondary: #717171;
-  --overlay-bg: rgba(255, 255, 255, 0.95);
-
-  --player-mask: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
-  --lyric-shadow: rgba(0, 0, 0, 0.08);
-  --progress-bg: rgba(0, 0, 0, 0.08);
-
-  /* Настройки Блюра (СВЕТЛАЯ ТЕМА) */
-  --bg-brightness: 1;        /* Еще ярче, чтобы "выбелить" темные углы */
-  --bg-saturate: 10;          /* Экстремальная сочность, чтобы цвета "горели" */
-  --bg-blur-opacity: 0.9;     /* Плотный слой */
+  --bg-brightness: 1;
+  --bg-saturate: 10;
+  --bg-blur-opacity: 0.9;
   --bg-overlay-gradient: linear-gradient(to bottom, rgba(255,255,255,0.1) 20%, rgba(255,255,255,0.9) 100%);
   --cover-shadow: 0 12px 45px rgba(0,0,0,0.1);
 }
@@ -54,68 +56,61 @@ input {
   --bg-color: #121212;
   --bg-surface: #1c1c1e;
   --text-color: #f9fafb;
-  
   --accent-color: #ff8798; 
-  --text-primary: var(--text-color);
   --text-secondary: #a1a1a1;
-  --overlay-bg: rgba(18, 18, 18, 0.98);
-
-  --lyric-shadow: rgba(255, 255, 255, 0.3);
-  --progress-bg: rgba(255, 255, 255, 0.1);
-
-  /* Настройки Блюра (ТЕМНАЯ ТЕМА) */
-  --bg-brightness: 0.65;       /* Достаточно темно для читаемости текста */
-  --bg-saturate: 2.2;          /* Умеренная сочность */
+  --bg-brightness: 0.65;
+  --bg-saturate: 2.2;
   --bg-blur-opacity: 0.7;
   --bg-overlay-gradient: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.8) 100%);
   --cover-shadow: 0 25px 60px rgba(0,0,0,0.6);
 }
 
-/* --- Интерактивные элементы (Эффект нажатия) --- */
+/* --- 4. Компоненты со скроллом (теперь без лишних стилей бара) --- */
 
-/* Эффект для списка треков */
+.custom-tracks-scroll,
+.custom-horizontal-scroll,
+.album-scroll-content,
+.artist-page-container {
+  display: flex;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Для горизонтальных списков переопределяем направление */
+.custom-horizontal-scroll,
+.album-scroll-content {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* --- 5. Элементы интерфейса --- */
+
 .track-item {
   transition: background-color 0.2s ease, transform 0.1s ease;
   cursor: pointer;
 }
 
 .track-item:active {
-  /* Вместо синего выделения — легкое затемнение и уменьшение */
   background-color: var(--bg-surface);
   transform: scale(0.98);
 }
 
-/* Эффект для кнопок управления */
 button:active {
   opacity: 0.7;
   transform: scale(0.95);
 }
+
+/* Скрытие стандартных контролов аудио */
 audio::-webkit-media-controls-enclosure,
 audio::-webkit-media-controls-panel,
-audio::-webkit-media-controls { display: none !important; }
-
-      input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 0;
-  height: 0;
-  background: transparent;
-  border: none;
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 0;
-  height: 0;
-  background: transparent;
-  border: none;
-}
-
-/* Убираем контур при фокусе для эстетики */
-input[type="range"]:focus {
-  outline: none;
+audio::-webkit-media-controls { 
+  display: none !important; 
 }
 
 
+/* Стили страницы артиста */
 .artist-hero {
   height: 380px;
   background-size: cover;
@@ -126,17 +121,6 @@ input[type="range"]:focus {
   position: relative;
 }
 
-.artist-back-btn {
-  position: absolute;
-  top: 20px; right: 20px;
-  background: rgba(0,0,0,0.4);
-  border: none; color: white;
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  font-size: 20px;
-  cursor: pointer;
-}
-
 .artist-profile-pic {
   width: 120px; height: 120px;
   border-radius: 50%;
@@ -145,79 +129,10 @@ input[type="range"]:focus {
   border: 2px solid rgba(255,255,255,0.1);
 }
 
-.artist-hero-info {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
 .artist-main-name {
   font-size: clamp(32px, 8vw, 56px);
   font-weight: 900;
   margin: 8px 0;
   letter-spacing: -2px;
-}
-
-.verified-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.artist-section {
-  padding: 24px 16px 0;
-}
-
-.section-h {
-  font-size: 22px;
-  margin-bottom: 16px;
-}
-
-.track-row-wrapper {
-  display: flex;
-  align-items: center;
-}
-
-.track-index {
-  width: 30px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.album-mini-card {
-  min-width: 140px;
-  max-width: 140px;
-}
-
-.album-mini-card img {
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-
-.album-mini-title {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  margin-top: 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.custom-horizontal-scroll::-webkit-scrollbar,
-.album-scroll-content::-webkit-scrollbar,
-.artist-page-container::-webkit-scrollbar {
-  width: 6px;  /* Для вертикального */
-  height: 4px; /* Для горизонтального */
-}
-
-.custom-horizontal-scroll::-webkit-scrollbar-thumb,
-.album-scroll-content::-webkit-scrollbar-thumb,
-.artist-page-container::-webkit-scrollbar-thumb {
-  background: rgba(155, 155, 155, 0.2); /* Сделай чуть серым для универсальности */
-  border-radius: 10px;
+  color: white; /* Всегда белый на фоне фото */
 }

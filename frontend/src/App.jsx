@@ -49,13 +49,11 @@ function App() {
   const [searchAlbums, setSearchAlbums] = useState([]);
   const debouncedSearch = useDebounce(searchQuery, 500);
 
-
   const [activeArtistId, setActiveArtistId] = useState(null);
   const [activeAlbumId, setActiveAlbumId] = useState(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
   const [isDownloadPanelOpen, setIsDownloadPanelOpen] = useState(false);
 
-  // Состояние темы для внешних браузеров
   const [theme, setTheme] = useState('dark');
   const [isTelegram, setIsTelegram] = useState(true);
 
@@ -64,10 +62,9 @@ function App() {
   const [downloadQueue, setDownloadQueue] = useState([]);
   const loadingTimersRef = useRef({});
 
-  // Инициализация плеера через кастомный хук
+  // Инициализация плеера
   const player = useAudioPlayer(library, (track) => handleTrackSelect(track));
 
-  // --- Синхронизация рефов для MediaSession (решает проблему неработающих кнопок) ---
   const handleNextRef = useRef(player.handleNext);
   const handlePrevRef = useRef(player.handlePrev);
   const togglePlayRef = useRef(player.togglePlay);
@@ -78,123 +75,61 @@ function App() {
     togglePlayRef.current = player.togglePlay;
   }, [player.handleNext, player.handlePrev, player.togglePlay]);
 
-  // --- MediaSession API (Управление из шторки уведомлений) ---
+  // MediaSession API
   useEffect(() => {
-    const { 
-      currentTrack, 
-      isPlaying, 
-      duration, 
-      currentTime,
-      audioRef 
-    } = player;
-
+    const { currentTrack, isPlaying, duration, currentTime, audioRef } = player;
     if ('mediaSession' in navigator && currentTrack) {
-      // 1. Устанавливаем метаданные
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentTrack.title || 'Unknown Title',
         artist: currentTrack.artist || 'Unknown Artist',
         album: 'Deezer Player',
-        artwork: [
-          { 
-            src: currentTrack.cover_url || 'default_cover.png', 
-            sizes: '512x512', 
-            type: 'image/png' 
-          }
-        ]
+        artwork: [{ src: currentTrack.cover_url || 'default_cover.png', sizes: '512x512', type: 'image/png' }]
       });
-
-      // 2. Статус воспроизведения
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-
-      // 3. Обновление прогресс-бара
-      if (
-        navigator.mediaSession.setPositionState && 
-        Number.isFinite(duration) && 
-        duration > 0 &&
-        Number.isFinite(currentTime)
-      ) {
+      if (navigator.mediaSession.setPositionState && Number.isFinite(duration) && duration > 0) {
         try {
           navigator.mediaSession.setPositionState({
             duration: duration,
             playbackRate: 1,
             position: Math.min(currentTime, duration)
           });
-        } catch (e) {
-          console.warn("MediaSession Position Error:", e);
-        }
+        } catch (e) {}
       }
-
-      // 4. Обработчики кнопок через рефы
       navigator.mediaSession.setActionHandler('play', () => togglePlayRef.current());
       navigator.mediaSession.setActionHandler('pause', () => togglePlayRef.current());
-      
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        if (handleNextRef.current) handleNextRef.current();
-      });
-      
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        if (handlePrevRef.current) handlePrevRef.current();
-      });
-
+      navigator.mediaSession.setActionHandler('nexttrack', () => handleNextRef.current?.());
+      navigator.mediaSession.setActionHandler('previoustrack', () => handlePrevRef.current?.());
       navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime && audioRef?.current) {
-          audioRef.current.currentTime = details.seekTime;
-        }
+        if (details.seekTime && audioRef?.current) audioRef.current.currentTime = details.seekTime;
       });
-
-      return () => {
-        navigator.mediaSession.setActionHandler('play', null);
-        navigator.mediaSession.setActionHandler('pause', null);
-        navigator.mediaSession.setActionHandler('nexttrack', null);
-        navigator.mediaSession.setActionHandler('previoustrack', null);
-        navigator.mediaSession.setActionHandler('seekto', null);
-      };
     }
   }, [player.currentTrack, player.isPlaying, player.duration]);
-
-  useEffect(() => {
-    if ('mediaSession' in navigator && navigator.mediaSession.setPositionState && 
-        player.duration > 0 && Number.isFinite(player.currentTime)) {
-      try {
-        navigator.mediaSession.setPositionState({
-          duration: player.duration,
-          playbackRate: 1,
-          position: player.currentTime
-        });
-      } catch (e) {}
-    }
-  }, [player.currentTime, player.duration]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(interval);
   }, []);
 
-  // Telegram Init + Auth + Theme Logic
+  // Auth & Theme
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     const savedChatId = localStorage.getItem('custom_chat_id');
-
     const isActuallyInTg = !!(tg && tg.initData);
     setIsTelegram(isActuallyInTg);
 
     if (isActuallyInTg && tg.initDataUnsafe?.user) {
-      tg.ready();
-      tg.expand();
+      tg.ready(); tg.expand();
       const tgTheme = tg.colorScheme || 'dark';
       document.documentElement.setAttribute('data-theme', tgTheme);
       setTheme(tgTheme);
-      
       setTgUser(tg.initDataUnsafe.user);
       fetchLibrary(tg.initDataUnsafe.user.id);
     } else {
       const savedTheme = localStorage.getItem('app_theme') || 'dark';
       document.documentElement.setAttribute('data-theme', savedTheme);
       setTheme(savedTheme);
-
       if (savedChatId) {
-        const user = { id: savedChatId, first_name: "User " + savedChatId };
-        setTgUser(user);
+        setTgUser({ id: savedChatId, first_name: "User " + savedChatId });
         fetchLibrary(savedChatId);
       }
     }
@@ -210,8 +145,7 @@ function App() {
   const handleAuth = () => {
     if (manualChatId.trim()) {
       localStorage.setItem('custom_chat_id', manualChatId);
-      const user = { id: manualChatId, first_name: "User " + manualChatId };
-      setTgUser(user);
+      setTgUser({ id: manualChatId, first_name: "User " + manualChatId });
       fetchLibrary(manualChatId);
     }
   };
@@ -223,10 +157,7 @@ function App() {
         setLibrary(data);
         setFavoriteTrackIds(new Set(data.map(t => t.deezer_id)));
       })
-      .catch(err => {
-        console.error("Ошибка загрузки медиатеки:", err);
-        setLibrary([]);
-      });
+      .catch(() => setLibrary([]));
   }, [backendBaseUrl]);
 
   useEffect(() => {
@@ -236,49 +167,37 @@ function App() {
   }, []);
 
   // Search Logic
-useEffect(() => {
-  const cleanQuery = debouncedSearch.trim();
-  
-  if (cleanQuery.length > 1) {
-    setIsSearching(true);
-
-    Promise.all([
-      axios.get(`${backendBaseUrl}/api/search/deezer?q=${encodeURIComponent(cleanQuery)}`),
-      axios.get(`${backendBaseUrl}/api/search/artist?q=${encodeURIComponent(cleanQuery)}`),
-      axios.get(`${backendBaseUrl}/api/search/album?q=${encodeURIComponent(cleanQuery)}`)
-    ])
-      .then(([tracksRes, artistsRes, albumsRes]) => { // Добавили albumsRes
-        setSearchResults(Array.isArray(tracksRes.data) ? tracksRes.data : []);
-        setSearchArtists(Array.isArray(artistsRes.data) ? artistsRes.data : []);
-        setSearchAlbums(Array.isArray(albumsRes.data) ? albumsRes.data : []);
-      })
-      .catch((err) => {
-        console.error("Search error:", err);
-        setSearchResults([]);
-        setSearchArtists([]);
-        setSearchAlbums([]); // Очищаем всё при ошибке
-      })
-      .finally(() => {
-        setIsSearching(false);
-      });
-  } else {
-    setSearchResults([]);
-    setSearchArtists([]);
-    setSearchAlbums([]);
-    setIsSearching(false);
-  }
-}, [debouncedSearch, backendBaseUrl]);
+  useEffect(() => {
+    const cleanQuery = debouncedSearch.trim();
+    if (cleanQuery.length > 1) {
+      setIsSearching(true);
+      Promise.all([
+        axios.get(`${backendBaseUrl}/api/search/deezer?q=${encodeURIComponent(cleanQuery)}`),
+        axios.get(`${backendBaseUrl}/api/search/artist?q=${encodeURIComponent(cleanQuery)}`),
+        axios.get(`${backendBaseUrl}/api/search/album?q=${encodeURIComponent(cleanQuery)}`)
+      ])
+        .then(([tracksRes, artistsRes, albumsRes]) => {
+          setSearchResults(Array.isArray(tracksRes.data) ? tracksRes.data : []);
+          setSearchArtists(Array.isArray(artistsRes.data) ? artistsRes.data : []);
+          setSearchAlbums(Array.isArray(albumsRes.data) ? albumsRes.data : []);
+        })
+        .catch(() => {
+          setSearchResults([]); setSearchArtists([]); setSearchAlbums([]);
+        })
+        .finally(() => setIsSearching(false));
+    } else {
+      setSearchResults([]); setSearchArtists([]); setSearchAlbums([]); setIsSearching(false);
+    }
+  }, [debouncedSearch, backendBaseUrl]);
 
   const handleLike = async (track) => {
     if (!tgUser || !track) return;
     const isLiked = favoriteTrackIds.has(track.deezer_id);
     setFavoriteTrackIds(prev => {
         const next = new Set(prev);
-        if (isLiked) next.delete(track.deezer_id);
-        else next.add(track.deezer_id);
+        if (isLiked) next.delete(track.deezer_id); else next.add(track.deezer_id);
         return next;
     });
-
     try {
         await axios.post(`${backendBaseUrl}/api/tracks/${isLiked ? 'unlike' : 'like'}`, {
             user_id: Number(tgUser.id), 
@@ -288,18 +207,14 @@ useEffect(() => {
             cover_url: track.album?.cover_big || track.cover_url || ""
         });
         window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
-    } catch (err) {
-        console.error("Ошибка при лайке:", err.response?.data || err.message);
-    } finally {
-        fetchLibrary(tgUser.id);
-    }
+    } catch (err) { console.error(err); } 
+    finally { fetchLibrary(tgUser.id); }
   };
 
   const handleTrackSelect = useCallback(async (track) => {
     if (player.prepareAudio) player.prepareAudio();
     if (player.currentTrack?.deezer_id === track.deezer_id && player.currentTrack.play_link) {
-      player.togglePlay();
-      return;
+      player.togglePlay(); return;
     }
     if (pendingTracks[track.deezer_id]) return;
     await requestTrack(track);
@@ -309,56 +224,26 @@ useEffect(() => {
     const trackId = track.deezer_id;
     try {
       const response = await axios.post(`${backendBaseUrl}/api/tracks/play`, track);
-      
       if (response.status === 200) {
         if (isRetry) {
-          setPendingTracks(prev => ({ 
-            ...prev, 
-            [trackId]: { ...prev[trackId], isDone: true } 
-          }));
-          setTimeout(() => {
-            clearLoadingState(trackId);
-            fetchLibrary(tgUser.id);
-          }, 1500);
+          setPendingTracks(prev => ({ ...prev, [trackId]: { ...prev[trackId], isDone: true } }));
+          setTimeout(() => { clearLoadingState(trackId); fetchLibrary(tgUser.id); }, 1500);
         } else {
           clearLoadingState(trackId);
-          player.setCurrentTrack({ 
-            ...track, 
-            play_link: response.data.play_link, 
-            track_id: response.data.track_id 
-          });
+          player.setCurrentTrack({ ...track, play_link: response.data.play_link, track_id: response.data.track_id });
           player.setIsPlaying(true);
         }
       } else if (response.status === 202) {
         setDownloadQueue(prev => prev.find(t => t.deezer_id === trackId) ? prev : [track, ...prev]);
-        setPendingTracks(prev => {
-          if (prev[trackId]) return prev;
-          return {
-            ...prev,
-            [trackId]: { 
-              finishTime: Date.now() + 15000,
-              totalWait: 15000, 
-              isDone: false 
-            }
-          };
-        });
+        setPendingTracks(prev => prev[trackId] ? prev : ({ ...prev, [trackId]: { finishTime: Date.now() + 15000, totalWait: 15000, isDone: false } }));
         loadingTimersRef.current[trackId] = setTimeout(() => requestTrack(track, true), 5000);
       }
-    } catch (err) {
-      clearLoadingState(trackId);
-    }
+    } catch (err) { clearLoadingState(trackId); }
   };
 
   const clearLoadingState = (trackId) => {
-    setPendingTracks(prev => {
-      const newState = { ...prev };
-      delete newState[trackId];
-      return newState;
-    });
-    if (loadingTimersRef.current[trackId]) {
-      clearTimeout(loadingTimersRef.current[trackId]);
-      delete loadingTimersRef.current[trackId];
-    }
+    setPendingTracks(prev => { const newState = { ...prev }; delete newState[trackId]; return newState; });
+    if (loadingTimersRef.current[trackId]) { clearTimeout(loadingTimersRef.current[trackId]); delete loadingTimersRef.current[trackId]; }
   };
 
   useEffect(() => {
@@ -367,91 +252,52 @@ useEffect(() => {
     if (isFullPlayerOpen) {
       tg.BackButton.show();
       tg.BackButton.onClick(() => setIsFullPlayerOpen(false));
-    } else {
-      tg.BackButton.hide();
-    }
+    } else tg.BackButton.hide();
   }, [isFullPlayerOpen]);
 
   const wasLinkProcessed = useRef(false);
-
   useEffect(() => {
     if (wasLinkProcessed.current) return;
     const tg = window.Telegram?.WebApp;
     const startParam = tg?.initDataUnsafe?.start_param;
     const params = new URLSearchParams(window.location.search);
-    const trackIdFromUrl = params.get('track');
-    const finalTrackId = startParam || trackIdFromUrl;
-    
-    if (finalTrackId && tgUser) {
+    const trackIdFromUrl = startParam || params.get('track');
+    if (trackIdFromUrl && tgUser) {
       const fetchAndPlay = async () => {
         try {
-          const statusRes = await axios.get(`${backendBaseUrl}/api/tracks/status/${finalTrackId}`);
-          if (statusRes.data && statusRes.data.status !== 'not_found') {
-            handleTrackSelect(statusRes.data);
-          } else {
-            throw new Error('not_found_on_backend');
+          const statusRes = await axios.get(`${backendBaseUrl}/api/tracks/status/${trackIdFromUrl}`);
+          if (statusRes.data && statusRes.data.status !== 'not_found') handleTrackSelect(statusRes.data);
+          else {
+            const searchRes = await axios.get(`${backendBaseUrl}/api/search/deezer?q=${trackIdFromUrl}`);
+            const found = searchRes.data.find(t => String(t.deezer_id) === String(trackIdFromUrl));
+            handleTrackSelect(found || { deezer_id: parseInt(trackIdFromUrl), title: "Загрузка..." });
           }
-        } catch (err) {
-          try {
-            const searchRes = await axios.get(`${backendBaseUrl}/api/search/deezer?q=${finalTrackId}`);
-            const found = searchRes.data.find(t => String(t.deezer_id) === String(finalTrackId));
-            if (found) handleTrackSelect(found);
-            else handleTrackSelect({ deezer_id: parseInt(finalTrackId), title: "Загрузка трека..." });
-          } catch (searchErr) {
-            handleTrackSelect({ deezer_id: parseInt(finalTrackId), title: "Загрузка..." });
-          }
-        }
+        } catch (err) { handleTrackSelect({ deezer_id: parseInt(trackIdFromUrl), title: "Загрузка..." }); }
       };
-      fetchAndPlay();
-      setIsFullPlayerOpen(true);
-      wasLinkProcessed.current = true;
-      if (trackIdFromUrl) {
-        window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
-      }
+      fetchAndPlay(); setIsFullPlayerOpen(true); wasLinkProcessed.current = true;
+      if (params.get('track')) window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
     }
   }, [tgUser, handleTrackSelect, backendBaseUrl]);
 
   if (!tgUser) {
     return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: 'var(--bg-color)', color: 'var(--text-color)', padding: '20px', textAlign: 'center'
-      }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-color)', color: 'var(--text-color)', padding: '20px', textAlign: 'center' }}>
         {!isTelegram && (
           <div style={{ position: 'absolute', top: '20px', right: '20px' }} onClick={toggleTheme}>
-            <div style={{
-              width: '40px', height: '20px', background: 'var(--bg-surface)', borderRadius: '20px',
-              position: 'relative', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              <div style={{
-                width: '16px', height: '16px', background: 'var(--accent-color)', borderRadius: '50%',
-                position: 'absolute', top: '1px', left: theme === 'dark' ? '21px' : '1px',
-                transition: 'all 0.2s ease'
-              }} />
+            <div style={{ width: '40px', height: '20px', background: 'var(--bg-surface)', borderRadius: '20px', position: 'relative', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ width: '16px', height: '16px', background: 'var(--accent-color)', borderRadius: '50%', position: 'absolute', top: '1px', left: theme === 'dark' ? '21px' : '1px', transition: 'all 0.2s ease' }} />
             </div>
           </div>
         )}
-        <h3 style={{ marginBottom: '20px' }}>Вход в систему</h3>
-        <input 
-          type="text" placeholder="Введите Telegram Chat ID" value={manualChatId}
-          onChange={(e) => setManualChatId(e.target.value)}
-          style={{
-            background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px',
-            color: 'var(--text-color)', fontSize: '16px', width: '100%', maxWidth: '300px', marginBottom: '15px'
-          }}
-        />
-        <button onClick={handleAuth} style={{ background: 'var(--accent-color)', border: 'none', borderRadius: '10px', padding: '12px 30px', color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>
-          Войти
-        </button>
+        <h3>Вход в систему</h3>
+        <input type="text" placeholder="Введите Telegram Chat ID" value={manualChatId} onChange={(e) => setManualChatId(e.target.value)} style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px', color: 'var(--text-color)', fontSize: '16px', width: '100%', maxWidth: '300px', marginBottom: '15px' }} />
+        <button onClick={handleAuth} style={{ background: 'var(--accent-color)', border: 'none', borderRadius: '10px', padding: '12px 30px', color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>Войти</button>
       </div>
     );
   }
 
   return (
-    <div className="app-container" style={{
-      background: 'var(--bg-color)', color: 'var(--text-color)',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-    }}>
+    <div className="app-container" style={{ background: 'var(--bg-color)', color: 'var(--text-color)', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
       
       {!isTelegram && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
@@ -470,152 +316,61 @@ useEffect(() => {
         setIsDownloadPanelOpen={setIsDownloadPanelOpen}
         isSearchOpen={isSearchOpen}
         setIsSearchOpen={setIsSearchOpen}
+        searchQuery={searchQuery}       
+        setSearchQuery={setSearchQuery}
         pendingTracks={pendingTracks}
         downloadQueue={downloadQueue}
+        backendBaseUrl={backendBaseUrl}
       />
 
-      {isSearchOpen && (
-        <div style={{ marginBottom: '20px', transition: 'all 0.3s ease' }}>
-          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-surface)', borderRadius: '10px', padding: '8px 12px', height: '40px' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}>
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input autoFocus type="text" placeholder="Поиск музыки" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: '100%', background: 'transparent', color: 'var(--text-color)', fontSize: '17px', border: 'none', outline: 'none', padding: '0' }} />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>✕</button>
-            )}
+      {isDownloadPanelOpen && (
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Загрузки</h3>
+            <span onClick={() => setDownloadQueue([])} style={{ color: 'var(--accent-color)', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}>Очистить</span>
           </div>
+          <TracksContainer>
+            {downloadQueue.map(track => (
+              <TrackItem key={`q-${track.deezer_id}`} track={track} isFromQueue={true} isActive={player.currentTrack?.deezer_id === track.deezer_id} isPlaying={player.isPlaying} pendingData={pendingTracks[track.deezer_id]} now={now} onClick={handleTrackSelect} />
+            ))}
+          </TracksContainer>
         </div>
       )}
 
-      {isDownloadPanelOpen && (
-  <div style={{ marginBottom: '24px' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-      <h3 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Загрузки</h3>
-      <span 
-        onClick={() => setDownloadQueue([])} 
-        style={{ color: 'var(--accent-color)', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
-      >
-        Очистить
-      </span>
-    </div>
-
-    {/* Оборачиваем загрузки в контейнер со скроллом */}
-    <TracksContainer>
-      {(downloadQueue || []).map(track => (
-        <TrackItem 
-          key={`q-${track.deezer_id}`} 
-          track={track} 
-          isFromQueue={true} 
-          isActive={player.currentTrack?.deezer_id === track.deezer_id} 
-          isPlaying={player.isPlaying} 
-          pendingData={pendingTracks[track.deezer_id]} 
-          now={now} 
-          onClick={handleTrackSelect} 
-        />
-      ))}
-    </TracksContainer>
-  </div>
-)}
-
       <div>
-        <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '16px' }}>
-    {isSearchOpen ? (isSearching ? 'Поиск...' : 'Результаты') : 'Медиатека'}
-  </h3>
-        {isSearchOpen && (
-  <>
-    <ArtistsSection 
-      artists={searchArtists} 
-      onArtistClick={(artist) => setActiveArtistId(artist.id)}
-      onAlbumClick={(album) => setActiveAlbumId(album.id)}
-    />
-    
-    <AlbumsSection 
-      albums={searchAlbums} 
-      onAlbumClick={(album) => setActiveAlbumId(album.id)}
-    />
-  </>
-)}
-        <TracksContainer maxHeight={isSearchOpen ? "calc(100vh - 400px)" : "calc(100vh - 200px)"}>
-  {(isSearchOpen ? (searchResults || []) : (library || [])).map(track => (
-    <TrackItem 
-      key={`lib-${track.deezer_id}`} 
-      track={track} 
-      isActive={player.currentTrack?.deezer_id === track.deezer_id} 
-      isPlaying={player.isPlaying} 
-      pendingData={pendingTracks[track.deezer_id]} 
-      now={now} 
-      onClick={handleTrackSelect} 
-    />
-  ))}
+        <TracksContainer maxHeight={"calc(88vh)"}>
+          <h3 style={{ fontSize: '20px', fontWeight: '700' }}>
+            {isSearchOpen ? (isSearching ? 'Поиск...' : 'Результаты') : 'Медиатека'}
+          </h3>
+          <div>
+            {isSearchOpen && (
+              <>
+                <ArtistsSection artists={searchArtists} onArtistClick={(artist) => setActiveArtistId(artist.id)} onAlbumClick={(album) => setActiveAlbumId(album.id)} />
+                <AlbumsSection albums={searchAlbums} onAlbumClick={(album) => setActiveAlbumId(album.id)} />
+              </>
+            )}
 
-  {/* Добавляем "безопасную зону" в конце списка, если плеер активен */}
-  {player.currentTrack && <div style={{ height: '30px', flexShrink: 0 }} />}
-</TracksContainer>
+            {(isSearchOpen ? searchResults : library).map(track => (
+              <TrackItem key={`lib-${track.deezer_id}`} track={track} isActive={player.currentTrack?.deezer_id === track.deezer_id} isPlaying={player.isPlaying} pendingData={pendingTracks[track.deezer_id]} now={now} onClick={handleTrackSelect} />
+            ))}
 
-  {!isSearchOpen && library.length === 0 && (
-    <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '40px' }}>
-      Ваша медиатека пуста
-    </p>
-  )}
-              {/* Страница артиста */}
-{activeArtistId && (
-  <ArtistPage 
-    artistId={activeArtistId}
-    backendBaseUrl={backendBaseUrl}
-    onBack={() => setActiveArtistId(null)} 
-    onTrackSelect={handleTrackSelect}
-    onAlbumClick={(album) => {
-      setActiveAlbumId(album.id);
-    }}
-    currentTrack={player.currentTrack}
-    isPlaying={player.isPlaying}
-    pendingTracks={pendingTracks}
-    now={now}
-  />
-)}
-{activeAlbumId && (
-  <AlbumPage 
-    albumId={activeAlbumId}
-    backendBaseUrl={backendBaseUrl}
-    onBack={() => setActiveAlbumId(null)}
-    onTrackSelect={handleTrackSelect}
-    currentTrack={player.currentTrack}
-    isPlaying={player.isPlaying}
-    pendingTracks={pendingTracks}
-    now={now}
-  />
-)}
+            {!isSearchOpen && library.length === 0 && (
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '40px' }}>Ваша медиатека пуста</p>
+            )}
+          </div>
+          <div style={{ height: player.currentTrack ? '80px' : '0px', transition: 'height 0.3s ease', flexShrink: 0 }} />
+        </TracksContainer>
 
+        {activeArtistId && (
+          <ArtistPage artistId={activeArtistId} onAlbumClick={setActiveAlbumId} backendBaseUrl={backendBaseUrl} onBack={() => setActiveArtistId(null)} onTrackSelect={handleTrackSelect} currentTrack={player.currentTrack} isPlaying={player.isPlaying} pendingTracks={pendingTracks} now={now} />
+        )}
+        {activeAlbumId && (
+          <AlbumPage albumId={activeAlbumId} onBack={() => setActiveAlbumId(null)} backendBaseUrl={backendBaseUrl} onTrackSelect={handleTrackSelect} currentTrack={player.currentTrack} isPlaying={player.isPlaying} pendingTracks={pendingTracks} now={now} />
+        )}
       </div>
 
-
-
-      <FullPlayer 
-  {...player} 
-  togglePlay={player.togglePlay}
-  handleNext={player.handleNext} // Проверьте, чтобы имя тут совпадало с тем, что в FullPlayer.jsx
-  handlePrev={player.handlePrev}
-  isPlaying={player.isPlaying}
-  isOpen={isFullPlayerOpen} 
-  onClose={() => setIsFullPlayerOpen(false)} 
-  formatTime={formatTime} 
-  handleLike={handleLike} 
-  favoriteTrackIds={favoriteTrackIds} 
-/>
-      <AudioPlayer 
-  {...player} 
-  handleNext={player.handleNext} 
-  handlePrev={player.handlePrev}
-  isMobile={isMobile} 
-  isFullPlayerOpen={isFullPlayerOpen} 
-  setIsFullPlayerOpen={setIsFullPlayerOpen} 
-  formatTime={formatTime} 
-  handleLike={handleLike} 
-  favoriteTrackIds={favoriteTrackIds} 
-  backendBaseUrl={backendBaseUrl} 
-/>
+      <FullPlayer {...player} togglePlay={player.togglePlay} handleNext={player.handleNext} handlePrev={player.handlePrev} isPlaying={player.isPlaying} isOpen={isFullPlayerOpen} onClose={() => setIsFullPlayerOpen(false)} formatTime={formatTime} handleLike={handleLike} favoriteTrackIds={favoriteTrackIds} onArtistClick={(id) => setActiveArtistId(id)} backendBaseUrl={backendBaseUrl}/>
+      <AudioPlayer {...player} handleNext={player.handleNext} handlePrev={player.handlePrev} isMobile={isMobile} isFullPlayerOpen={isFullPlayerOpen} setIsFullPlayerOpen={setIsFullPlayerOpen} formatTime={formatTime} handleLike={handleLike} favoriteTrackIds={favoriteTrackIds} backendBaseUrl={backendBaseUrl} />
     </div>
   );
 }

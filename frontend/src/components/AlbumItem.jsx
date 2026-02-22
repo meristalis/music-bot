@@ -81,10 +81,7 @@ export const AlbumsSection = ({ albums, onAlbumClick }) => {
   if (!albums || albums.length === 0) return null;
 
   return (
-    <div style={{ marginBottom: '24px' }}>
-      <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '14px', paddingLeft: '4px' }}>
-        Альбомы
-      </h3>
+    <div>
       <div 
         ref={scrollRef}
         className="custom-horizontal-scroll"
