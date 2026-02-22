@@ -221,21 +221,47 @@ const FullPlayer = ({
   cursor: pointer;
 }
 
+.progress-wrapper {
+  padding: 20px 0; /* Увеличили зону клика сверху и снизу */
+  width: 100%;
+  cursor: pointer;
+  touch-action: none; /* Предотвращает скролл страницы при перемотке */
+}
+
 .track-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 4px; /* Тонкая полоска */
-  border-radius: 2px;
+  height: 6px; /* Чуть увеличим базовую высоту */
+  border-radius: 3px;
   outline: none;
-  background: transparent; /* Фон берется из inline градиента */
-  transition: height 0.2s ease;
+  background: transparent;
+  cursor: pointer;
+  display: block;
+}
+
+/* На Android/iOS thumb должен существовать, чтобы ловить клики, 
+.track-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 40px;  /* Большая область для пальца */
+  height: 40px;
+  background: transparent; 
+  border: none;
+  cursor: pointer;
+}
+
+.track-slider::-moz-range-thumb {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
   cursor: pointer;
 }
 
 /* При наведении полоска становится чуть толще, чтобы было легче попасть */
 .progress-wrapper:hover .track-slider {
-  height: 6px;
+  height: 8px;
 }
 
 /* СКРЫВАЕМ ПОЛЗУНОК НАВСЕГДА (Chrome, Safari, iOS, Edge) */

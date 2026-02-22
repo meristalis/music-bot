@@ -323,7 +323,11 @@ function App() {
         backendBaseUrl={backendBaseUrl}
       />
 
-      {isDownloadPanelOpen && (
+      
+
+      <div>
+        <TracksContainer maxHeight={"calc(88vh)"}>
+        {isDownloadPanelOpen && (
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Загрузки</h3>
@@ -336,9 +340,6 @@ function App() {
           </TracksContainer>
         </div>
       )}
-
-      <div>
-        <TracksContainer maxHeight={"calc(88vh)"}>
           <h3 style={{ fontSize: '20px', fontWeight: '700' }}>
             {isSearchOpen ? (isSearching ? 'Поиск...' : 'Результаты') : 'Медиатека'}
           </h3>
