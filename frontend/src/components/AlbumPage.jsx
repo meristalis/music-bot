@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react'; 
 import axios from 'axios';
 import TrackItem, { TracksContainer } from './TrackItem';
 
@@ -8,6 +9,7 @@ const AlbumPage = ({
 }) => {
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     const fetchAlbumData = async () => {
@@ -25,13 +27,16 @@ const AlbumPage = ({
     fetchAlbumData();
   }, [albumId, backendBaseUrl]);
 
+  const handleBackWithAnim = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onBack();
+      setIsClosing(false);
+    }, 400); 
+  };
+
   if (loading) return (
-    <div style={{ 
-      position: 'fixed', inset: 0, display: 'flex', 
-      justifyContent: 'center', alignItems: 'center', 
-      background: 'var(--bg-color)',
-      color: 'var(--text-secondary)' 
-    }}>
+    <div className="loader-container">
       Загрузка альбома...
     </div>
   );
@@ -39,109 +44,198 @@ const AlbumPage = ({
   if (!album) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: 'var(--bg-color)',
-      zIndex: 1000,
-      display: 'flex',
-      flexDirection: 'column',
-      paddingBottom: '85px' // Место для плеера
-    }}>
+    <div className={`album-page-root screen-overlay ${isClosing ? 'is-closing' : ''}`}>
       
-      {/* Кнопка закрытия */}
+      {/* КНОПКА ЗАКРЫТИЯ (Только крестик с инверсией) */}
       <button 
-        onClick={onBack}
-        style={{
-          position: 'absolute', top: '15px', right: '15px',
-          background: 'rgba(0, 0, 0, 0.3)', backdropFilter: 'blur(10px)',
-          border: 'none', color: 'white', width: '36px', height: '36px',
-          borderRadius: '50%', display: 'flex', alignItems: 'center', 
-          justifyContent: 'center', cursor: 'pointer', zIndex: 100
-        }}
+        className="ui-close-btn-minimal album-close-pos" 
+        onClick={handleBackWithAnim}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+        <X size={32} />
       </button>
 
-      {/* Основной скролл-контейнер */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        WebkitOverflowScrolling: 'touch',
-        padding: '0 16px'
-      }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div className="album-scroll-area no-scrollbar">
+        <div className="album-content-width">
           
-          {/* Шапка альбома (Герой) */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            padding: '40px 0 24px',
-            gap: '16px'
-          }}>
+          <div className="album-hero">
             <img 
               src={album.cover_medium} 
               alt={album.title} 
-              style={{
-                width: '180px',
-                height: '180px',
-                borderRadius: '12px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                objectFit: 'cover'
-              }} 
+              className="album-cover-main"
             />
-            <div>
-              <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 4px', color: 'var(--text-primary)' }}>
-                {album.title}
-              </h1>
-              <p style={{ fontSize: '16px', color: 'var(--accent-color)', fontWeight: '600', margin: '0 0 4px' }}>
-                {album.artist?.name}
-              </p>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+            {/* ТЕКСТ С ИНВЕРСИЕЙ (ЧЕРНЫЙ/БЕЛЫЙ) */}
+            <div className="album-meta text-contrast-wrapper">
+              <h1 className="album-title">{album.title}</h1>
+              <p className="album-artist-name">{album.artist?.name}</p>
+              <p className="album-info-text">
                 {album.release_date?.split('-')[0]} • {album.nb_tracks} треков
               </p>
             </div>
           </div>
 
-          {/* Список треков */}
-          <TracksContainer>
-            {album.tracks?.data?.map((track, index) => (
-              <div key={track.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ 
-                  width: '24px', 
-                  fontSize: '13px', 
-                  color: 'var(--text-secondary)', 
-                  textAlign: 'right',
-                  flexShrink: 0 
-                }}>
-                  {index + 1}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <TrackItem 
-                    track={{
-                      ...track,
-                      deezer_id: track.id,
-                      artist: album.artist?.name, 
-                      cover_url: album.cover_small || album.cover_medium
-                    }}
-                    isActive={currentTrack?.deezer_id === track.id}
-                    isPlaying={isPlaying}
-                    pendingData={pendingTracks[track.id]}
-                    now={now}
-                    onClick={onTrackSelect}
-                  />
+          <div className="album-tracks-list">
+            <TracksContainer>
+                {album.tracks?.data?.map((track, index) => (
+                <div key={track.id} className="album-track-row">
+                    <span className="album-index">{index + 1}</span>
+                    <div className="album-track-wrapper">
+                    <TrackItem 
+                        track={{
+                        ...track,
+                        deezer_id: track.id,
+                        artist: album.artist?.name, 
+                        cover_url: album.cover_small || album.cover_medium
+                        }}
+                        isActive={currentTrack?.deezer_id === track.id}
+                        isPlaying={isPlaying}
+                        pendingData={pendingTracks[track.id]}
+                        now={now}
+                        onClick={onTrackSelect}
+                    />
+                    </div>
                 </div>
-              </div>
-            ))}
-          </TracksContainer>
+                ))}
+            </TracksContainer>
+          </div>
           
         </div>
       </div>
+
+      <style>{`
+        .album-page-root {
+          display: flex;
+          flex-direction: column;
+          padding-bottom: 90px;
+          z-index: 2000;
+          background: var(--bg-color);
+          position: fixed;
+          inset: 0;
+        }
+
+        /* МИНИМАЛИСТИЧНЫЙ КРЕСТИК */
+        .ui-close-btn-minimal {
+          background: transparent;
+          border: none;
+          padding: 0;
+          cursor: pointer;
+          outline: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.2s ease, opacity 0.2s ease;
+          
+          /* Инверсия, чтобы крестик был виден на любом фоне */
+          color: #ffffff;
+          mix-blend-mode: difference;
+          filter: brightness(1) contrast(100);
+        }
+
+        .album-close-pos {
+          position: fixed;
+          top: 25px;
+          right: 25px;
+          z-index: 2100;
+        }
+
+        .ui-close-btn-minimal:active {
+          transform: scale(0.85);
+          opacity: 0.7;
+        }
+
+        @media (min-width: 840px) {
+          .album-close-pos {
+            right: calc(50% - 375px);
+          }
+        }
+
+        .album-scroll-area {
+          flex: 1;
+          overflow-y: auto;
+          WebkitOverflowScrolling: touch;
+          padding: 0 16px;
+        }
+
+        .album-content-width {
+          max-width: 800px;
+          margin: 0 auto;
+        }
+
+        .album-hero {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 60px 0 30px;
+          gap: 20px;
+        }
+
+        .album-cover-main {
+          width: clamp(180px, 50vw, 240px);
+          aspect-ratio: 1/1;
+          border-radius: 12px;
+          box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+          object-fit: cover;
+        }
+
+        /* МАГИЯ ИНВЕРСИИ ЦВЕТА */
+        .text-contrast-wrapper {
+          mix-blend-mode: difference;
+          filter: brightness(1) contrast(100);
+          color: #ffffff;
+        }
+
+        .album-title { 
+          font-size: 26px; 
+          font-weight: 900; 
+          margin: 0 0 6px; 
+          letter-spacing: -0.5px;
+        }
+
+        .album-artist-name { 
+          font-size: 18px; 
+          font-weight: 700; 
+          margin: 0 0 4px; 
+        }
+
+        .album-info-text { 
+          font-size: 14px; 
+          opacity: 0.8;
+          margin: 0; 
+        }
+
+        .album-tracks-list {
+          padding-top: 10px;
+        }
+
+        .album-track-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+        }
+
+        .album-index {
+          width: 24px;
+          font-size: 13px;
+          color: var(--text-secondary);
+          text-align: center;
+          flex-shrink: 0;
+          font-weight: 500;
+        }
+
+        .album-track-wrapper {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .loader-container {
+          position: fixed; inset: 0; display: flex; 
+          justify-content: center; alignItems: center; 
+          background: var(--bg-color);
+          color: var(--text-secondary);
+          z-index: 2000;
+        }
+      `}</style>
     </div>
   );
 };

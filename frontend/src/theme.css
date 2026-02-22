@@ -46,10 +46,10 @@ input {
   --text-primary: var(--text-color);
   --text-secondary: #717171;
   --bg-brightness: 1;
-  --bg-saturate: 10;
-  --bg-blur-opacity: 0.9;
-  --bg-overlay-gradient: linear-gradient(to bottom, rgba(255,255,255,0.1) 20%, rgba(255,255,255,0.9) 100%);
-  --cover-shadow: 0 12px 45px rgba(0,0,0,0.1);
+  --bg-saturate: 6;
+  --bg-blur-opacity: 1;
+  --bg-overlay-gradient: linear-gradient(to bottom, rgba(255,255,255,0.1)40%, rgba(255,255,255,0.9) 100%);
+  --cover-shadow: 0px 12px 12px rgba(0,0,0,0.34);
 }
 
 [data-theme='dark'] {
@@ -135,4 +135,63 @@ audio::-webkit-media-controls {
   margin: 8px 0;
   letter-spacing: -2px;
   color: white; /* Всегда белый на фоне фото */
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(100%); opacity: 0.8; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Базовый класс для полноэкранных оверлеев (FullPlayer, Страница артиста и т.д.) */
+.screen-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 2000;
+  background: var(--bg-color);
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
+  animation: slideInUp 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Состояние закрытия (выезд вправо и растворение) */
+.screen-overlay.is-closing {
+  transform: translateX(100%);
+  opacity: 0.5;
+  transition-delay: 0.1s;
+}
+
+/* --- Универсальная кнопка закрытия (Крестик) --- */
+.ui-close-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Иконка внутри кнопки с анимацией вращения */
+.ui-close-btn svg {
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease;
+  will-change: transform;
+  opacity: 0.8;
+}
+
+.ui-close-btn:active svg {
+  transform: rotate(90deg) scale(0.8);
+  opacity: 0.5;
+}
+
+/* Дополнительный класс для элементов в шапке (яркость при нажатии) */
+.header-icon-interactive {
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.header-icon-interactive:active {
+  transform: scale(0.9);
+  opacity: 0.6;
 }

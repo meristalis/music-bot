@@ -232,12 +232,14 @@ const FullPlayer = ({
     const diffX = touchEndClientX - touchStartRef.current.x;
     const diffY = touchStartRef.current.y - touchEndClientY;
 
-    if (diffY > 50 && Math.abs(diffX) < 30 && !showLyrics) {
+    // Свайп ВВЕРХ (открывает Lyrics)
+    if (diffY > 80 && Math.abs(diffX) < 50 && !showLyrics) {
       setShowLyrics(true);
       setSwipeX(0);
       return;
     }
 
+    // Горизонтальные свайпы для переключения треков (только если Lyrics закрыты)
     if (!showLyrics) {
         if (diffX > 100) {
             handlePrev();
@@ -395,10 +397,10 @@ const FullPlayer = ({
   .lyrics-toggle-icon { transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
   .lyrics-toggle-rotated { transform: rotate(180deg); }
   
-.full-player-overlay {
-  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
-  transform: translateY(0);
-}
+  .full-player-overlay {
+    transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
+    transform: translateY(0); opacity: 1;
+  }
   .full-player-overlay.closing {
     transition-delay: 0.15s; transform: translateX(100%); opacity: 0.5;
   }
@@ -407,6 +409,7 @@ const FullPlayer = ({
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
   }
+
 `}</style>
 
       {/* ФОН */}
@@ -414,42 +417,48 @@ const FullPlayer = ({
         ...styles.backgroundBlur, 
         backgroundImage: `url(${currentTrack.cover_url})`,
         filter: `blur(80px) brightness(var(--bg-brightness)) saturate(var(--bg-saturate))`,
-        opacity: `var(--bg-blur-opacity)`,
-        animation: 'fadeIn 1s ease'
+        opacity: 0.8,
+        transition: 'background-image 0.5s ease'
       }} />
 
+      {/* БЕЛЫЙ ГРАДИЕНТ СВЕРХУ ПОВЕРХ РАЗМЫТИЯ */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        background: `var(--bg-overlay-gradient)`,
-        backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)', zIndex: -1
+        background: 'var(--bg-overlay-gradient)', zIndex: -1
       }} />
       
       {/* ВЕРХНЯЯ ПАНЕЛЬ */}
       <div style={styles.headerRow}>
         <div ref={volumeContainerRef} style={{ position: 'relative' }} className="icon-center">
             <Volume2 
-                size={28} onClick={toggleVolumeBar} className="header-btn"
-                style={{ opacity: showVolumeBar ? 1 : 0.7 }} 
+                size={28} onClick={toggleVolumeBar} 
+                className="header-icon-interactive"
+                style={{ opacity: showVolumeBar ? 1 : 0.7, color: 'var(--text-primary)' }} 
             />
             {showVolumeBar && (
-                <div className="ios-volume-popover">
-                    <div className="ios-volume-track">
-                        <div className="ios-volume-fill" style={{ height: `${volume * 100}%` }} />
-                        <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange} className="ios-volume-input" />
-                    </div>
+              <div className="ios-volume-popover">
+                <div className="ios-volume-track">
+                  <div className="ios-volume-fill" style={{ height: `${volume * 100}%` }} />
+                  <input
+                    type="range" min="0" max="1" step="0.01" value={volume}
+                    className="ios-volume-input"
+                    onChange={handleVolumeChange}
+                  />
                 </div>
+              </div>
             )}
         </div>
 
         <div className="icon-center" onClick={() => setShowLyrics(!showLyrics)}>
           <ChevronUp 
             size={36} 
-            className={`header-btn lyrics-toggle-icon ${showLyrics ? 'lyrics-toggle-rotated' : ''}`} 
+            className={`header-icon-interactive lyrics-toggle-icon ${showLyrics ? 'lyrics-toggle-rotated' : ''}`} 
+            style={{ color: 'var(--text-primary)' }}
           />
         </div>
 
-        <button onClick={handleCloseWithAnim} style={styles.closeButton} className="icon-center">
-            <X size={32} className="header-btn close-btn-icon" />
+        <button onClick={handleCloseWithAnim} className="ui-close-btn">
+            <X size={32} />
         </button>
       </div>
 
@@ -469,6 +478,7 @@ const FullPlayer = ({
                   opacity: showLyrics ? 0 : 1,
                   pointerEvents: showLyrics ? 'none' : 'auto',
                 }}
+                onClick={() => setShowLyrics(true)} // Нажатие на обложку открывает lyrics
               >
                 <div style={styles.coverView}>
                   <div style={styles.coverContainer}>
@@ -637,9 +647,6 @@ const styles = {
   },
   backgroundBlur: {
     position: 'absolute', top: '-15%', left: '-15%', width: '130%', height: '130%', backgroundSize: 'cover', backgroundPosition: 'center', zIndex: -2
-  },
-  closeButton: {
-    background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', outline: 'none',
   },
   contentContainer: {
     display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: '500px', margin: '0 auto', position: 'relative', padding: '15px 10px'

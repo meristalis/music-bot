@@ -220,7 +220,7 @@ const styles = {
   mobileContainer: {
     position: 'fixed', bottom: '6px', left: '6px', right: '6px',
     background: 'var(--bg-surface)', borderRadius: '12px', padding: '8px 12px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.5)', zIndex: 1000,
+    boxShadow: '0 4px 20px rgba(0,0,0,0.5)', zIndex: 10000,
     border: '1px solid rgba(255,255,255,0.05)',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
   },
@@ -234,7 +234,7 @@ const styles = {
   desktopContainer: {
     position: 'fixed', bottom: '6px', left: '6px', right: '6px',
     background: 'var(--bg-surface)', borderRadius: '12px', padding: '12px 16px',
-    boxShadow: '0 8px 30px rgba(0,0,0,0.5)', zIndex: 1000,
+    boxShadow: '0 8px 30px rgba(0,0,0,0.5)', zIndex: 10000,
     border: '1px solid rgba(255,255,255,0.05)',
     color: 'var(--text-primary)'
   },
