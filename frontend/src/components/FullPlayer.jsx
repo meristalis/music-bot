@@ -319,21 +319,26 @@ const handleCloseWithAnim = () => {
   }
   .ios-volume-track { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column-reverse; }
   .ios-volume-fill { width: 100%; background: #fff; transition: height 0.1s ease-out; }
+
   .ios-volume-input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 10px;
-    height: 10px;
-    display: none;
-    opacity: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px; /* На тачскринах лучше делать бегунок побольше */
+  height: 20px;
+  background: black;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0.01;
   }
 
   .ios-volume-input::-moz-range-thumb {
-    width: 10px;
-    height: 10px;
-    display: none;
-    opacity: 0;
-    border: none;
+     width: 20px; /* На тачскринах лучше делать бегунок побольше */
+  height: 20px;
+  background: black;
+  border-radius: 50%;
+  border: none; /* У Firefox бывает дефолтная рамка */
+  cursor: pointer;
+  opacity: 0.01;
   }
 
   .ios-volume-input {
