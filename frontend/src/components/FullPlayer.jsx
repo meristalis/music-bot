@@ -113,7 +113,7 @@ const FullPlayer = ({
   const [showVolumeBar, setShowVolumeBar] = useState(false);
   const volumeTimerRef = useRef(null);
   const volumeContainerRef = useRef(null);
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const touchStartRef = useRef(null);
   const lastVolumeUpdateRef = useRef(0);
 
   useEffect(() => { 
@@ -152,6 +152,23 @@ const FullPlayer = ({
     e.stopPropagation();
     setShowVolumeBar(!showVolumeBar);
     if (!showVolumeBar) resetVolumeTimer();
+  };
+
+  // Обработка свайпов
+  const handleTouchStart = (e) => {
+    touchStartRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!touchStartRef.current) return;
+    const touchEnd = e.changedTouches[0].clientY;
+    const diff = touchStartRef.current - touchEnd;
+
+    // Если свайп вверх больше 50px и текст скрыт — показываем
+    if (diff > 50 && !showLyrics) {
+      setShowLyrics(true);
+    } 
+    touchStartRef.current = null;
   };
 
   const handleShare = async (e) => {
@@ -221,60 +238,31 @@ const FullPlayer = ({
   cursor: pointer;
 }
 
-.progress-wrapper {
-  padding: 20px 0; /* Увеличили зону клика сверху и снизу */
-  width: 100%;
-  cursor: pointer;
-  touch-action: none; /* Предотвращает скролл страницы при перемотке */
-}
-
 .track-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px; /* Чуть увеличим базовую высоту */
-  border-radius: 3px;
+  height: 5px;
+  border-radius: 10px;
   outline: none;
   background: transparent;
-  cursor: pointer;
-  display: block;
-}
-
-/* На Android/iOS thumb должен существовать, чтобы ловить клики, 
-.track-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 40px;  /* Большая область для пальца */
-  height: 40px;
-  background: transparent; 
-  border: none;
+  transition: height 0.2s ease;
   cursor: pointer;
 }
 
-.track-slider::-moz-range-thumb {
-  width: 40px;
-  height: 40px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-}
-
-/* При наведении полоска становится чуть толще, чтобы было легче попасть */
 .progress-wrapper:hover .track-slider {
-  height: 8px;
+  height: 6px;
 }
 
-/* СКРЫВАЕМ ПОЛЗУНОК НАВСЕГДА (Chrome, Safari, iOS, Edge) */
 .track-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 0;
   height: 0;
-  display: none; /* Полное удаление из рендеринга */
+  display: none;
   opacity: 0;
 }
 
-/* СКРЫВАЕМ ПОЛЗУНОК НАВСЕГДА (Firefox) */
 .track-slider::-moz-range-thumb {
   width: 0;
   height: 0;
@@ -283,12 +271,10 @@ const FullPlayer = ({
   border: none;
 }
 
-/* Убираем любые эффекты при нажатии, которые могли остаться */
 .track-slider:active::-webkit-slider-thumb {
   opacity: 0;
   display: none;
 }
-  /* Остальные стили интерфейса */
   .ios-volume-popover {
     position: absolute; top: 45px; left: 0;
     background: rgba(255, 255, 255, 0.25);
@@ -298,7 +284,6 @@ const FullPlayer = ({
   }
   .ios-volume-track { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column-reverse; }
   .ios-volume-fill { width: 100%; background: #fff; transition: height 0.1s ease-out; }
-  /* РЕГУЛИРОВКА ГРОМКОСТИ: СКРЫВАЕМ КРУЖОК */
   .ios-volume-input::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
@@ -316,13 +301,12 @@ const FullPlayer = ({
     border: none;
   }
 
-  /* Обновленный стиль самого контейнера громкости для чистоты */
   .ios-volume-input {
     position: absolute;
     top: 0;
     left: 0;
-    width: 140px; /* Длина совпадает с высотой поповера */
-    height: 36px; /* Ширина поповера */
+    width: 140px;
+    height: 36px;
     appearance: none;
     -webkit-appearance: none;
     background: transparent;
@@ -338,21 +322,19 @@ const FullPlayer = ({
   
   .artist-clickable { 
     cursor: pointer; 
-    text-decoration: underline; /* Обычное подчеркивание */
-    text-underline-offset: 4px;  /* Небольшой отступ, чтобы линия не резала буквы g, j, p, y */
+    text-decoration: underline;
     transition: opacity 0.2s ease;
   }
 
   .artist-clickable:hover {
     opacity: 1;
-    text-decoration-thickness: 2px; /* Чуть жирнее при наведении для акцента */
+    text-decoration-thickness: 2px;
   }
 
   .artist-clickable:active {
     opacity: 0.6;
   }
 
-  /* Обязательно удали старый эффект, если он остался */
   .artist-clickable::after {
     display: none !important;
   }
@@ -370,13 +352,13 @@ const FullPlayer = ({
 <div style={{
   position: 'absolute',
   top: 0, left: 0, right: 0, bottom: 0,
-  background: `var(--bg-overlay-gradient)`, // Градиент тоже из CSS
+  background: `var(--bg-overlay-gradient)`,
   backdropFilter: 'blur(30px)',
   WebkitBackdropFilter: 'blur(30px)',
   zIndex: -1
 }} />
       
-      {/* ВЕРХНЯЯ ПАНЕЛЬ С КНОПКАМИ (Громкость, Текст, Закрыть) */}
+      {/* ВЕРХНЯЯ ПАНЕЛЬ С КНОПКАМИ */}
       <div style={styles.headerRow}>
         <div ref={volumeContainerRef} style={{ position: 'relative' }} className="icon-center">
             <Volume2 
@@ -395,7 +377,6 @@ const FullPlayer = ({
             )}
         </div>
 
-        {/* НОВАЯ КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕКСТА */}
         <div className="icon-center" onClick={() => setShowLyrics(!showLyrics)}>
              {showLyrics ? (
                  <ChevronDown size={36} className="header-btn" />
@@ -411,25 +392,30 @@ const FullPlayer = ({
 
       <div style={styles.contentContainer}>
         <div style={styles.topArea}>
-            <div style={styles.visualStack}>
-              {/* СЛОЙ ОБЛОЖКИ — без теней и лишних слоев */}
+            <div 
+              style={styles.visualStack}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* СЛОЙ ОБЛОЖКИ */}
 <div 
   className="visual-layer"
+  onClick={() => !showLyrics && setShowLyrics(true)}
   style={{ 
     transform: showLyrics ? 'translateY(-110%)' : 'translateY(0)',
     opacity: showLyrics ? 0 : 1,
     pointerEvents: showLyrics ? 'none' : 'auto',
+    cursor: 'pointer'
   }}
 >
   <div style={styles.coverView}>
     <div style={styles.coverContainer}>
        <div style={styles.coverResponsiveBox}>
-          {/* Мы удалили вторую картинку с блюром, которая была тут */}
           <img 
              src={currentTrack.cover_url} 
     style={{
       ...styles.coverImg,
-      boxShadow: `var(--cover-shadow)`, // Тень теперь зависит от темы
+      boxShadow: `var(--cover-shadow)`,
     }} 
     alt={currentTrack.title}
           />
@@ -476,16 +462,12 @@ const FullPlayer = ({
 
     if (!targetArtistId && currentTrack.artist) {
       try {
-        // Запрос к твоему бэкенду для поиска артиста по имени
         const response = await axios.get(`${backendBaseUrl}/api/search/artist?q=${encodeURIComponent(currentTrack.artist)}`);
         const artists = response.data;
-
         if (Array.isArray(artists) && artists.length > 0) {
-          // Берем ID из первого результата
           targetArtistId = artists[0].id || artists[0].deezer_id;
         }
       } catch (err) {
-        // Оставляем только системную ошибку в консоли на случай падения сети
         console.error("Artist search failed", err);
       }
     }
@@ -524,12 +506,19 @@ const FullPlayer = ({
   min="0"
   max={duration || 0}
   value={currentTime}
+  step="1"
   className="track-slider"
+  onInput={(e) => {
+    const val = Number(e.target.value);
+    setCurrentTime(val);
+    if (audioRef.current) {
+      audioRef.current.currentTime = val;
+    }
+  }}
   onChange={(e) => {
     const val = Number(e.target.value);
-    if (audioRef.current) { 
-      audioRef.current.currentTime = val; 
-      setCurrentTime(val); 
+    if (audioRef.current) {
+      audioRef.current.currentTime = val;
     }
   }}
   style={{
@@ -537,7 +526,9 @@ const FullPlayer = ({
       var(--accent-color) 0%, 
       var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, 
       rgba(200, 200, 200, 0.2) ${(currentTime / (duration || 1)) * 100}%, 
-      rgba(200, 200, 200, 0.2) 100%)`
+      rgba(200, 200, 200, 0.2) 100%)`,
+    cursor: 'pointer',
+    touchAction: 'none'
   }}
 />
     <div style={styles.timeInfo}>
@@ -604,7 +595,7 @@ const styles = {
     flex: 1, display: 'flex', flexDirection: 'column', width: '100%', minHeight: 0,gap: '20px'
   },
   visualStack: { 
-    flex: 1, position: 'relative', width: '100%', minHeight: 0 
+    flex: 1, position: 'relative', width: '100%', minHeight: 0, touchAction: 'pan-y'
   },
   coverView: { 
     height: '100%', display: 'flex', flexDirection: 'column', position: 'relative'
