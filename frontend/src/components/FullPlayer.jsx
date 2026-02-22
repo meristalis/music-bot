@@ -3,10 +3,11 @@ import { X, Heart, Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Repeat1,
 import axios from 'axios';
 
 // --- КОМПОНЕНТ ДЛЯ ТЕКСТА С КЭШИРОВАНИЕМ ---
-const LyricsView = ({ currentTrack, currentTime, audioRef, isActive }) => {
+const LyricsView = ({ currentTrack, currentTime, audioRef, isActive, onSwipeDownAtTop }) => {
   const [lyrics, setLyrics] = useState([]);
   const [isSynced, setIsSynced] = useState(false);
   const scrollRef = useRef(null);
+  const touchStartRef = useRef(null);
 
   useEffect(() => {
     const fetchLyrics = async () => {
@@ -76,8 +77,31 @@ const LyricsView = ({ currentTrack, currentTime, audioRef, isActive }) => {
     }
   }, [activeIndex, isSynced, isActive]);
 
+  // Обработка свайпа вниз в начале текста
+  const handleTouchStart = (e) => {
+    touchStartRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchStartRef.current || !scrollRef.current) return;
+    const currentTouch = e.touches[0].clientY;
+    const diff = currentTouch - touchStartRef.current;
+    
+    // Если мы в самом верху и тянем вниз
+    if (scrollRef.current.scrollTop <= 0 && diff > 50) {
+      onSwipeDownAtTop();
+      touchStartRef.current = null;
+    }
+  };
+
   return (
-    <div style={styles.lyricsScroll} ref={scrollRef} className="no-scrollbar">
+    <div 
+      style={styles.lyricsScroll} 
+      ref={scrollRef} 
+      className="no-scrollbar"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+    >
       <div style={{ height: '5vh', flexShrink: 0 }} />
       {lyrics.map((line, i) => (
         <div
@@ -115,6 +139,7 @@ const FullPlayer = ({
   const volumeContainerRef = useRef(null);
   const touchStartRef = useRef(null);
   const lastVolumeUpdateRef = useRef(0);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => { 
     if (!isOpen) setShowLyrics(false); 
@@ -142,6 +167,13 @@ const FullPlayer = ({
     }
     resetVolumeTimer();
   };
+const handleCloseWithAnim = () => {
+  setIsClosing(true); // Запускаем анимацию ухода вниз
+  setTimeout(() => {
+    onClose();
+    setIsClosing(false); // Сбрасываем для следующего открытия
+  }, 500); // Время должно совпадать с длительностью transition в CSS
+};
 
   const resetVolumeTimer = () => {
     if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
@@ -154,7 +186,7 @@ const FullPlayer = ({
     if (!showVolumeBar) resetVolumeTimer();
   };
 
-  // Обработка свайпов
+  // Обработка свайпов для слоя обложки
   const handleTouchStart = (e) => {
     touchStartRef.current = e.touches[0].clientY;
   };
@@ -205,7 +237,7 @@ const FullPlayer = ({
   const isLiked = favoriteTrackIds.has(currentTrack.deezer_id);
 
   return (
-    <div style={styles.overlay}>
+    <div className={`full-player-overlay ${isClosing ? 'closing' : ''}`} style={styles.overlay }>
 <style>{`
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
@@ -257,24 +289,22 @@ const FullPlayer = ({
 .track-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 0;
-  height: 0;
-  display: none;
-  opacity: 0;
+  width: 12px;
+  height: 12px;
+  background: transparent;
+  border-radius: 50%;
+  box-shadow: none;
 }
 
 .track-slider::-moz-range-thumb {
-  width: 0;
-  height: 0;
-  display: none;
-  opacity: 0;
+  width: 12px;
+  height: 12px;
+  background: transparent;
+  border-radius: 50%;
   border: none;
+  box-shadow: none;
 }
 
-.track-slider:active::-webkit-slider-thumb {
-  opacity: 0;
-  display: none;
-}
   .ios-volume-popover {
     position: absolute; top: 45px; left: 0;
     background: rgba(255, 255, 255, 0.25);
@@ -338,6 +368,50 @@ const FullPlayer = ({
   .artist-clickable::after {
     display: none !important;
   }
+
+  /* Анимация крестика при наведении или нажатии */
+.close-btn-icon {
+    /* Плавная кривая Apple-style: быстрый старт, очень мягкое замедление */
+    transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease;
+    will-change: transform;
+  }
+
+  .close-btn-icon:active {
+    /* Поворот на 90 градусов и легкое уменьшение при нажатии */
+    transform: rotate(90deg) scale(0.8);
+    opacity: 0.6;
+  }
+
+/* Анимация стрелочки Lyrics */
+.lyrics-toggle-icon {
+  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+.lyrics-toggle-rotated {
+  transform: rotate(180deg);
+}
+  .full-player-overlay {
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Класс, который вешается при закрытии */
+.full-player-overlay.closing {
+  transition-delay: 0.15s;
+  transform: translateX(100%); /* Улетает вниз */
+  opacity: 0.5;
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.full-player-overlay {
+  animation: slideInUp 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  /* остальные свойства... */
+}
+  
 `}</style>
 
       {/* ФОН */}
@@ -378,16 +452,19 @@ const FullPlayer = ({
         </div>
 
         <div className="icon-center" onClick={() => setShowLyrics(!showLyrics)}>
-             {showLyrics ? (
-                 <ChevronDown size={36} className="header-btn" />
-             ) : (
-                 <ChevronUp size={36} className="header-btn" />
-             )}
-        </div>
+  <ChevronUp 
+    size={36} 
+    className={`header-btn lyrics-toggle-icon ${showLyrics ? 'lyrics-toggle-rotated' : ''}`} 
+  />
+</div>
 
-        <button onClick={onClose} style={styles.closeButton} className="icon-center">
-            <X size={32} className="header-btn" />
-        </button>
+<button 
+  onClick={handleCloseWithAnim} 
+  style={styles.closeButton} 
+  className="icon-center"
+>
+    <X size={32} className="header-btn close-btn-icon" />
+</button>
       </div>
 
       <div style={styles.contentContainer}>
@@ -443,6 +520,7 @@ const FullPlayer = ({
                       currentTime={currentTime} 
                       audioRef={audioRef}
                       isActive={showLyrics}
+                      onSwipeDownAtTop={() => setShowLyrics(false)}
                     />
                   </div>
                 </div>
@@ -511,11 +589,15 @@ const FullPlayer = ({
   onInput={(e) => {
     const val = Number(e.target.value);
     setCurrentTime(val);
+  }}
+  onChange={(e) => {
+    const val = Number(e.target.value);
     if (audioRef.current) {
       audioRef.current.currentTime = val;
     }
+    setCurrentTime(val);
   }}
-  onChange={(e) => {
+  onTouchEnd={(e) => {
     const val = Number(e.target.value);
     if (audioRef.current) {
       audioRef.current.currentTime = val;

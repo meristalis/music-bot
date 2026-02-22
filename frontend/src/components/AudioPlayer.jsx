@@ -48,6 +48,33 @@ const AudioPlayer = ({
   onPlay={() => setIsPlaying(true)}
   onPause={() => setIsPlaying(false)}
 />
+<style>{`
+  @keyframes slideUpPlayer {
+    from {
+      transform: translateY(100px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-player {
+    /* 0.4s — золотая середина для быстрого, но плавного появления */
+    animation: slideUpPlayer 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    will-change: transform;
+  }
+
+  .loader-spin {
+    animation: spin 2s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`}</style>
 
       {/* Если открыт полный плеер, мы просто возвращаем пустой фрагмент, 
           так как FullPlayer рендерится отдельно в App.js. 
@@ -56,7 +83,9 @@ const AudioPlayer = ({
       {!isFullPlayerOpen && (
         isMobile ? (
           /* MOBILE MINI PLAYER */
-          <div style={styles.mobileContainer}>
+          
+          <div className="animate-player" // Добавляем класс анимации
+  style={styles.mobileContainer}>
   <div style={styles.mobileProgressBar}>
     {renderProgress(currentTime / (duration || 1))}
   </div>
