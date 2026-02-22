@@ -77,7 +77,6 @@ const LyricsView = ({ currentTrack, currentTime, audioRef, isActive, onSwipeDown
     }
   }, [activeIndex, isSynced, isActive]);
 
-  // Обработка свайпа вниз в начале текста
   const handleTouchStart = (e) => {
     touchStartRef.current = e.touches[0].clientY;
   };
@@ -87,7 +86,6 @@ const LyricsView = ({ currentTrack, currentTime, audioRef, isActive, onSwipeDown
     const currentTouch = e.touches[0].clientY;
     const diff = currentTouch - touchStartRef.current;
     
-    // Если мы в самом верху и тянем вниз
     if (scrollRef.current.scrollTop <= 0 && diff > 50) {
       onSwipeDownAtTop();
       touchStartRef.current = null;
@@ -129,17 +127,22 @@ const FullPlayer = ({
   isOpen, currentTrack, onClose, isPlaying, togglePlay,
   currentTime, setCurrentTime, duration, formatTime,
   audioRef, handleNext, handlePrev, isShuffle, setIsShuffle,
-  repeatMode, toggleRepeat, handleLike, favoriteTrackIds,onArtistClick,
+  repeatMode, toggleRepeat, handleLike, favoriteTrackIds, onArtistClick,
   backendBaseUrl
 }) => {
   const [showLyrics, setShowLyrics] = useState(false);
   const [volume, setVolume] = useState(1);
   const [showVolumeBar, setShowVolumeBar] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  
+  // Состояния для свайпа обложки
+  const [swipeX, setSwipeX] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+
   const volumeTimerRef = useRef(null);
   const volumeContainerRef = useRef(null);
-  const touchStartRef = useRef(null);
+  const touchStartRef = useRef({ x: 0, y: 0 });
   const lastVolumeUpdateRef = useRef(0);
-  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => { 
     if (!isOpen) setShowLyrics(false); 
@@ -160,20 +163,19 @@ const FullPlayer = ({
     const now = Date.now();
     setVolume(newVol);
     if (now - lastVolumeUpdateRef.current > 50) {
-      if (audioRef.current) {
-        audioRef.current.volume = newVol;
-      }
+      if (audioRef.current) audioRef.current.volume = newVol;
       lastVolumeUpdateRef.current = now;
     }
     resetVolumeTimer();
   };
-const handleCloseWithAnim = () => {
-  setIsClosing(true); // Запускаем анимацию ухода вниз
-  setTimeout(() => {
-    onClose();
-    setIsClosing(false); // Сбрасываем для следующего открытия
-  }, 500); // Время должно совпадать с длительностью transition в CSS
-};
+
+  const handleCloseWithAnim = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+    }, 500);
+  };
 
   const resetVolumeTimer = () => {
     if (volumeTimerRef.current) clearTimeout(volumeTimerRef.current);
@@ -186,21 +188,50 @@ const handleCloseWithAnim = () => {
     if (!showVolumeBar) resetVolumeTimer();
   };
 
-  // Обработка свайпов для слоя обложки
+  // Обработка жестов на обложке
   const handleTouchStart = (e) => {
-    touchStartRef.current = e.touches[0].clientY;
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY
+    };
+    setIsSwiping(true);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isSwiping || showLyrics) return;
+    const currentX = e.touches[0].clientX;
+    const diffX = currentX - touchStartRef.current.x;
+    
+    // Ограничиваем визуальное смещение для мягкости
+    setSwipeX(diffX);
   };
 
   const handleTouchEnd = (e) => {
-    if (!touchStartRef.current) return;
-    const touchEnd = e.changedTouches[0].clientY;
-    const diff = touchStartRef.current - touchEnd;
+    if (!isSwiping) return;
+    setIsSwiping(false);
 
-    // Если свайп вверх больше 50px и текст скрыт — показываем
-    if (diff > 50 && !showLyrics) {
+    const touchEndClientX = e.changedTouches[0].clientX;
+    const touchEndClientY = e.changedTouches[0].clientY;
+    const diffX = touchEndClientX - touchStartRef.current.x;
+    const diffY = touchStartRef.current.y - touchEndClientY;
+
+    // 1. Свайп вверх для открытия текста
+    if (diffY > 50 && Math.abs(diffX) < 30 && !showLyrics) {
       setShowLyrics(true);
-    } 
-    touchStartRef.current = null;
+      setSwipeX(0);
+      return;
+    }
+
+    // 2. Свайпы влево/вправо для переключения трека (только если текст закрыт)
+    if (!showLyrics) {
+        if (diffX > 100) {
+            handlePrev();
+        } else if (diffX < -100) {
+            handleNext();
+        }
+    }
+    
+    setSwipeX(0);
   };
 
   const handleShare = async (e) => {
@@ -242,12 +273,18 @@ const handleCloseWithAnim = () => {
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
   
-  .visual-layer {
-    transition: transform 0.6s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.5s ease;
+.visual-layer {
+    /* Сделали s и чуть более "резкий" вылет */
+    transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     display: flex;
     flex-direction: column;
+  }
+
+  .cover-layer-anim {
+    /* Тоже ускоряем до 0.4s */
+    transition: ${isSwiping ? 'none' : 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease'};
   }
 
   .lyric-line { transition: all 0.4s ease; cursor: pointer; color: var(--text-primary); }
@@ -265,50 +302,45 @@ const handleCloseWithAnim = () => {
   .header-btn:active { transform: scale(0.9); }
 
   .progress-wrapper {
-  padding: 12px 0;
-  width: 100%;
-  cursor: pointer;
-}
+    padding: 12px 0;
+    width: 100%;
+    cursor: pointer;
+  }
 
-.track-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 5px;
-  border-radius: 10px;
-  outline: none;
-  background: transparent;
-  transition: height 0.2s ease;
-  cursor: pointer;
-}
+  .track-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 5px;
+    border-radius: 10px;
+    outline: none;
+    background: transparent;
+    transition: height 0.2s ease;
+    cursor: pointer;
+  }
 
-.progress-wrapper:hover .track-slider {
-  height: 6px;
-}
+  .progress-wrapper:hover .track-slider { height: 6px; }
 
-.track-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px; /* На тачскринах лучше делать бегунок побольше */
-  height: 20px;
-  background: black;
-  border-radius: 50%;
-  cursor: pointer;
-  opacity: 0.01;
-}
+  .track-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: black;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0.01;
+  }
 
-/* Для Firefox */
-.track-slider::-moz-range-thumb {
-  width: 20px; /* На тачскринах лучше делать бегунок побольше */
-  height: 20px;
-  background: black;
-  border-radius: 50%;
-  border: none; /* У Firefox бывает дефолтная рамка */
-  cursor: pointer;
-  opacity: 0.01;
-}
-
-  
+  .track-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: black;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    opacity: 0.01;
+  }
 
   .ios-volume-popover {
     position: absolute; top: 45px; left: 0;
@@ -321,32 +353,30 @@ const handleCloseWithAnim = () => {
   .ios-volume-fill { width: 100%; background: #fff; transition: height 0.1s ease-out; }
 
   .ios-volume-input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px; /* На тачскринах лучше делать бегунок побольше */
-  height: 20px;
-  background: black;
-  border-radius: 50%;
-  cursor: pointer;
-  opacity: 0.01;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: black;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0.01;
   }
-
-  .ios-volume-input::-moz-range-thumb {
-     width: 20px; /* На тачскринах лучше делать бегунок побольше */
-  height: 20px;
-  background: black;
-  border-radius: 50%;
-  border: none; /* У Firefox бывает дефолтная рамка */
-  cursor: pointer;
-  opacity: 0.01;
+    .ios-volume-input::-moz-range-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: black;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0.01;
   }
 
   .ios-volume-input {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 140px;
-    height: 36px;
+    top: 0; left: 0;
+    width: 140px; height: 36px;
     appearance: none;
     -webkit-appearance: none;
     background: transparent;
@@ -366,83 +396,59 @@ const handleCloseWithAnim = () => {
     transition: opacity 0.2s ease;
   }
 
-  .artist-clickable:hover {
-    opacity: 1;
-    text-decoration-thickness: 2px;
-  }
+  .artist-clickable:hover { opacity: 1; text-decoration-thickness: 2px; }
+  .artist-clickable:active { opacity: 0.6; }
 
-  .artist-clickable:active {
-    opacity: 0.6;
-  }
-
-  .artist-clickable::after {
-    display: none !important;
-  }
-
-  /* Анимация крестика при наведении или нажатии */
-.close-btn-icon {
-    /* Плавная кривая Apple-style: быстрый старт, очень мягкое замедление */
+  .close-btn-icon {
     transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease;
     will-change: transform;
   }
+  .close-btn-icon:active { transform: rotate(90deg) scale(0.8); opacity: 0.6; }
 
-  .close-btn-icon:active {
-    /* Поворот на 90 градусов и легкое уменьшение при нажатии */
-    transform: rotate(90deg) scale(0.8);
-    opacity: 0.6;
+  .lyrics-toggle-icon { transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+  .lyrics-toggle-rotated { transform: rotate(180deg); }
+  
+  .full-player-overlay {
+    transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
+    transform: translateY(0);
+    opacity: 1;
   }
 
-/* Анимация стрелочки Lyrics */
-.lyrics-toggle-icon {
-  transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-}
-.lyrics-toggle-rotated {
-  transform: rotate(180deg);
-}
+  .full-player-overlay.closing {
+    transition-delay: 0.15s;
+    transform: translateX(100%);
+    opacity: 0.5;
+  }
+
+  @keyframes slideInUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
   .full-player-overlay {
-  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
-  transform: translateY(0);
-  opacity: 1;
-}
-
-/* Класс, который вешается при закрытии */
-.full-player-overlay.closing {
-  transition-delay: 0.15s;
-  transform: translateX(100%); /* Улетает вниз */
-  opacity: 0.5;
-}
-
-@keyframes slideInUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.full-player-overlay {
-  animation: slideInUp 0.5s cubic-bezier(0.32, 0.72, 0, 1);
-  /* остальные свойства... */
-}
-  
+    animation: slideInUp 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  }
 `}</style>
 
       {/* ФОН */}
- <div style={{ 
-  ...styles.backgroundBlur, 
-  backgroundImage: `url(${currentTrack.cover_url})`,
-  filter: `blur(80px) brightness(var(--bg-brightness)) saturate(var(--bg-saturate))`,
-  opacity: `var(--bg-blur-opacity)`,
-  animation: 'fadeIn 1s ease'
-}} />
+      <div style={{ 
+        ...styles.backgroundBlur, 
+        backgroundImage: `url(${currentTrack.cover_url})`,
+        filter: `blur(80px) brightness(var(--bg-brightness)) saturate(var(--bg-saturate))`,
+        opacity: `var(--bg-blur-opacity)`,
+        animation: 'fadeIn 1s ease'
+      }} />
 
-<div style={{
-  position: 'absolute',
-  top: 0, left: 0, right: 0, bottom: 0,
-  background: `var(--bg-overlay-gradient)`,
-  backdropFilter: 'blur(30px)',
-  WebkitBackdropFilter: 'blur(30px)',
-  zIndex: -1
-}} />
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: `var(--bg-overlay-gradient)`,
+        backdropFilter: 'blur(30px)',
+        WebkitBackdropFilter: 'blur(30px)',
+        zIndex: -1
+      }} />
       
-      {/* ВЕРХНЯЯ ПАНЕЛЬ С КНОПКАМИ */}
+      {/* ВЕРХНЯЯ ПАНЕЛЬ */}
       <div style={styles.headerRow}>
         <div ref={volumeContainerRef} style={{ position: 'relative' }} className="icon-center">
             <Volume2 
@@ -462,19 +468,15 @@ const handleCloseWithAnim = () => {
         </div>
 
         <div className="icon-center" onClick={() => setShowLyrics(!showLyrics)}>
-  <ChevronUp 
-    size={36} 
-    className={`header-btn lyrics-toggle-icon ${showLyrics ? 'lyrics-toggle-rotated' : ''}`} 
-  />
-</div>
+          <ChevronUp 
+            size={36} 
+            className={`header-btn lyrics-toggle-icon ${showLyrics ? 'lyrics-toggle-rotated' : ''}`} 
+          />
+        </div>
 
-<button 
-  onClick={handleCloseWithAnim} 
-  style={styles.closeButton} 
-  className="icon-center"
->
-    <X size={32} className="header-btn close-btn-icon" />
-</button>
+        <button onClick={handleCloseWithAnim} style={styles.closeButton} className="icon-center">
+            <X size={32} className="header-btn close-btn-icon" />
+        </button>
       </div>
 
       <div style={styles.contentContainer}>
@@ -482,37 +484,39 @@ const handleCloseWithAnim = () => {
             <div 
               style={styles.visualStack}
               onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
             >
               {/* СЛОЙ ОБЛОЖКИ */}
-<div 
-  className="visual-layer"
-  onClick={() => !showLyrics && setShowLyrics(true)}
-  style={{ 
-    transform: showLyrics ? 'translateY(-110%)' : 'translateY(0)',
-    opacity: showLyrics ? 0 : 1,
-    pointerEvents: showLyrics ? 'none' : 'auto',
-    cursor: 'pointer'
-  }}
->
-  <div style={styles.coverView}>
-    <div style={styles.coverContainer}>
-       <div style={styles.coverResponsiveBox}>
-          <img 
-             src={currentTrack.cover_url} 
-    style={{
-      ...styles.coverImg,
-      boxShadow: `var(--cover-shadow)`,
-    }} 
-    alt={currentTrack.title}
-          />
-          <button onClick={handleShare} style={styles.shareOnCover} className="icon-center">
-              <Share size={20} style={{ transform: 'scaleX(-1)' }} />
-          </button>
-       </div>
-    </div>
-  </div>
-</div>
+              <div 
+                className="visual-layer cover-layer-anim"
+                style={{ 
+                  transform: showLyrics 
+                    ? 'translateY(-110%)' 
+                    : `translateX(${swipeX}px) rotate(${swipeX * 0.05}deg)`,
+                  opacity: showLyrics ? 0 : 1,
+                  pointerEvents: showLyrics ? 'none' : 'auto',
+                }}
+              >
+                <div style={styles.coverView}>
+                  <div style={styles.coverContainer}>
+                     <div style={styles.coverResponsiveBox}>
+                        <img 
+                           src={currentTrack.cover_url} 
+                           style={{
+                             ...styles.coverImg,
+                             boxShadow: `var(--cover-shadow)`,
+                             transform: `scale(${1 - Math.abs(swipeX) / 2000})`
+                           }} 
+                           alt={currentTrack.title}
+                        />
+                        <button onClick={handleShare} style={styles.shareOnCover} className="icon-center">
+                            <Share size={20} style={{ transform: 'scaleX(-1)' }} />
+                        </button>
+                     </div>
+                  </div>
+                </div>
+              </div>
 
               {/* СЛОЙ ТЕКСТА */}
               <div 
@@ -530,7 +534,10 @@ const handleCloseWithAnim = () => {
                       currentTime={currentTime} 
                       audioRef={audioRef}
                       isActive={showLyrics}
-                      onSwipeDownAtTop={() => setShowLyrics(false)}
+                      onSwipeDownAtTop={() => {
+                      setIsSwiping(false);
+                      setShowLyrics(false);
+                    }}
                     />
                   </div>
                 </div>
@@ -538,96 +545,77 @@ const handleCloseWithAnim = () => {
             </div>
 
             <div style={styles.trackInfoWrapper}>
-  <div style={{ flex: 1, overflow: 'hidden', paddingRight: '15px' }}>
-    <h2 style={styles.title}>{currentTrack.title}</h2>
-<p 
-  style={styles.artist} 
-  className="artist-clickable"
-  onClick={async (e) => {
-    e.stopPropagation();
-    
-    let targetArtistId = currentTrack.artist_id || currentTrack.artist?.id;
-
-    if (!targetArtistId && currentTrack.artist) {
-      try {
-        const response = await axios.get(`${backendBaseUrl}/api/search/artist?q=${encodeURIComponent(currentTrack.artist)}`);
-        const artists = response.data;
-        if (Array.isArray(artists) && artists.length > 0) {
-          targetArtistId = artists[0].id || artists[0].deezer_id;
-        }
-      } catch (err) {
-        console.error("Artist search failed", err);
-      }
-    }
-
-    if (onArtistClick && targetArtistId) {
-      onArtistClick(targetArtistId);
-      onClose();
-    }
-  }}
->
-  {typeof currentTrack.artist === 'object' ? currentTrack.artist.name : currentTrack.artist}
-</p>
-  </div>
-  <div className="icon-center" style={{ width: 42, height: 42 }}>
-    <Heart
-      size={32}
-      onClick={() => handleLike(currentTrack)}
-      fill={isLiked ? "var(--accent-color)" : "none"}
-      stroke={isLiked ? "var(--accent-color)" : "var(--text-primary)"}
-      strokeWidth={2}
-      style={{ 
-        cursor: 'pointer',
-        opacity: isLiked ? 1 : 0.8,
-        transition: 'all 0.3s ease',
-        display: 'block'
-      }}
-    />
-  </div>
-</div>
+              <div style={{ flex: 1, overflow: 'hidden', paddingRight: '15px' }}>
+                <h2 style={styles.title}>{currentTrack.title}</h2>
+                <p 
+                  style={styles.artist} 
+                  className="artist-clickable"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    let targetArtistId = currentTrack.artist_id || currentTrack.artist?.id;
+                    if (!targetArtistId && currentTrack.artist) {
+                      try {
+                        const response = await axios.get(`${backendBaseUrl}/api/search/artist?q=${encodeURIComponent(currentTrack.artist)}`);
+                        const artists = response.data;
+                        if (Array.isArray(artists) && artists.length > 0) {
+                          targetArtistId = artists[0].id || artists[0].deezer_id;
+                        }
+                      } catch (err) { console.error(err); }
+                    }
+                    if (onArtistClick && targetArtistId) {
+                      onArtistClick(targetArtistId);
+                      onClose();
+                    }
+                  }}
+                >
+                  {typeof currentTrack.artist === 'object' ? currentTrack.artist.name : currentTrack.artist}
+                </p>
+              </div>
+              <div className="icon-center" style={{ width: 42, height: 42 }}>
+                <Heart
+                  size={32}
+                  onClick={() => handleLike(currentTrack)}
+                  fill={isLiked ? "var(--accent-color)" : "none"}
+                  stroke={isLiked ? "var(--accent-color)" : "var(--text-primary)"}
+                  strokeWidth={2}
+                  style={{ 
+                    cursor: 'pointer',
+                    opacity: isLiked ? 1 : 0.8,
+                    transition: 'all 0.3s ease',
+                  }}
+                />
+              </div>
+            </div>
         </div>
 
         <div style={styles.bottomArea}>
           <div style={styles.progressWrapper} className="progress-wrapper">
-<input
-  type="range"
-  min="0"
-  max={duration || 0}
-  value={currentTime}
-  step="1"
-  className="track-slider"
-  onInput={(e) => {
-    const val = Number(e.target.value);
-    setCurrentTime(val);
-  }}
-  onChange={(e) => {
-    const val = Number(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = val;
-    }
-    setCurrentTime(val);
-  }}
-  onTouchEnd={(e) => {
-    const val = Number(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = val;
-    }
-  }}
-  style={{
-    background: `linear-gradient(to right, 
-      var(--accent-color) 0%, 
-      var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, 
-      rgba(200, 200, 200, 0.2) ${(currentTime / (duration || 1)) * 100}%, 
-      rgba(200, 200, 200, 0.2) 100%)`,
-    cursor: 'pointer',
-    touchAction: 'none'
-  }}
-/>
-    <div style={styles.timeInfo}>
-      <span>{formatTime(currentTime)}</span>
-      <span>{formatTime(duration)}</span>
-    </div>
-  </div>
+            <input
+              type="range"
+              min="0"
+              max={duration || 0}
+              value={currentTime}
+              step="1"
+              className="track-slider"
+              onInput={(e) => setCurrentTime(Number(e.target.value))}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                if (audioRef.current) audioRef.current.currentTime = val;
+                setCurrentTime(val);
+              }}
+              style={{
+                background: `linear-gradient(to right, 
+                  var(--accent-color) 0%, 
+                  var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, 
+                  rgba(200, 200, 200, 0.2) ${(currentTime / (duration || 1)) * 100}%, 
+                  rgba(200, 200, 200, 0.2) 100%)`,
+              }}
+            />
+            <div style={styles.timeInfo}>
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
 
           <div style={styles.mainControlsRow}>
             <div style={styles.controlsWrapper}>
@@ -687,7 +675,7 @@ const styles = {
     flex: 1, display: 'flex', flexDirection: 'column', width: '100%', minHeight: 0,gap: '20px'
   },
   visualStack: { 
-    flex: 1, position: 'relative', width: '100%', minHeight: 0, touchAction: 'pan-y'
+    flex: 1, position: 'relative', width: '100%', minHeight: 0, touchAction: 'none' 
   },
   coverView: { 
     height: '100%', display: 'flex', flexDirection: 'column', position: 'relative'
@@ -699,7 +687,7 @@ const styles = {
     width: '100%', maxWidth: '85vw', aspectRatio: '1/1', maxHeight: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
   coverImg: { 
-    width: '100%', height: '100%', borderRadius: '24px', objectFit: 'cover', 
+    width: '100%', height: '100%', borderRadius: '24px', objectFit: 'cover', willChange: 'transform'
   },
   shareOnCover: {
     position: 'absolute', top: '15px', right: '15px', background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(10px)', border: 'none', color: '#fff', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', zIndex: 5, outline: 'none'
@@ -711,17 +699,12 @@ const styles = {
   artist: { fontSize: 'clamp(16px, 4.5vw, 20px)', color: 'var(--text-secondary)', margin: 0, opacity: 0.8 },
   bottomArea: { padding: '1vh 0 4vh 0', flexShrink: 0 },
   progressWrapper: { width: '100%', marginBottom: '2vh' },
-  rangeInput: { width: '100%', height: '4px', appearance: 'none', borderRadius: '5px', outline: 'none' },
   timeInfo: { display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '500' },
   mainControlsRow: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%'
   },
   controlsWrapper: { 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    gap: '12px',              
-    width: '100%'
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%'
   },
   sideControlBox: { width: '40px' },
   stepControlBox: { width: '60px' },
