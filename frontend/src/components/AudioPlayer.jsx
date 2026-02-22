@@ -1,10 +1,10 @@
-import React from 'react'; // Убрал useCallback, так как функция придет извне
-import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Repeat1, Heart, AlignCenter } from 'lucide-react';
+import React, { useState, useEffect } from 'react'; 
+import { SkipBack, Play, Pause, SkipForward, Heart, AlignCenter } from 'lucide-react';
 
 const AudioPlayer = ({
   currentTrack,
   audioRef,
-  isPlaying,
+  isPlaying: isPlayingProp,
   currentTime,
   setCurrentTime,
   duration,
@@ -16,143 +16,163 @@ const AudioPlayer = ({
   isFullPlayerOpen,
   setIsFullPlayerOpen,
   loadingTrackId,
-  setIsPlaying,
   handleLike,
   favoriteTrackIds,
   volume,
   setVolume,
   formatTime,
   backendBaseUrl,
-  // prepareAudio, // Если вы передаете его из App.js, он будет здесь
 }) => {
+  // --- ЛОКАЛЬНАЯ СИНХРОНИЗАЦИЯ (Сердце плеера) ---
+  const [localIsPlaying, setLocalIsPlaying] = useState(isPlayingProp);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const syncState = () => setLocalIsPlaying(!audio.paused);
+
+    audio.addEventListener('play', syncState);
+    audio.addEventListener('pause', syncState);
+    audio.addEventListener('playing', syncState);
+
+    setLocalIsPlaying(!audio.paused);
+
+    return () => {
+      audio.removeEventListener('play', syncState);
+      audio.removeEventListener('pause', syncState);
+      audio.removeEventListener('playing', syncState);
+    };
+  }, [audioRef, currentTrack]);
+
+  useEffect(() => {
+    setLocalIsPlaying(isPlayingProp);
+  }, [isPlayingProp]);
+
   if (!currentTrack) return null;
 
-  // Вспомогательная функция для прогресс-бара
+  // Универсальный обработчик клика по Play/Pause
+  const handleToggle = (e) => {
+    e.stopPropagation();
+    togglePlay();
+    setLocalIsPlaying(!localIsPlaying);
+  };
+
   const renderProgress = (progress) => (
-    <div style={{ height: '100%', width: `${progress * 100}%`, background: 'var(--text-primary)' }} />
+    <div style={{ height: '100%', width: `${progress * 100}%`, background: 'var(--text-primary)', transition: 'width 0.1s linear' }} />
   );
 
   return (
     <>
-      {/* ОДИН общий тег audio для всех режимов */}
-<audio
-  ref={audioRef}
-  src={currentTrack.play_link || (currentTrack.file_id ? `${backendBaseUrl}/api/tracks/stream/${currentTrack.file_id}` : null)}
-  playsInline
-  preload="auto"
-  autoPlay
-  onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
-  onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
-  onEnded={handleNext}
-  /* ДОБАВЬ ЭТИ ДВЕ СТРОЧКИ */
-  onPlay={() => setIsPlaying(true)}
-  onPause={() => setIsPlaying(false)}
-/>
-<style>{`
-  @keyframes slideUpPlayer {
-    from {
-      transform: translateY(100px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  .animate-player {
-    /* 0.4s — золотая середина для быстрого, но плавного появления */
-    animation: slideUpPlayer 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    will-change: transform;
-  }
-
-  .loader-spin {
-    animation: spin 2s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-`}</style>
-
-      {/* Если открыт полный плеер, мы просто возвращаем пустой фрагмент, 
-          так как FullPlayer рендерится отдельно в App.js. 
-          Если же FullPlayer — это часть AudioPlayer, логика ниже */}
+      <audio
+        ref={audioRef}
+        src={currentTrack.play_link || (currentTrack.file_id ? `${backendBaseUrl}/api/tracks/stream/${currentTrack.file_id}` : null)}
+        playsInline
+        preload="auto"
+        autoPlay
+        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onEnded={handleNext}
+      />
       
+      <style>{`
+        @keyframes slideUpPlayer {
+          from { transform: translateY(100px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-player { animation: slideUpPlayer 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; will-change: transform; }
+        .loader-spin { animation: spin 2s linear infinite; display: flex; align-items: center; justify-content: center; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        /* Стили для ползунков (Input Range) */
+        .player-range { 
+          appearance: none; 
+          -webkit-appearance: none;
+          outline: none; 
+          border-radius: 2px;
+          height: 4px;
+        }
+        .player-range::-webkit-slider-thumb { 
+          appearance: none; 
+          -webkit-appearance: none;
+          width: 12px; 
+          height: 12px; 
+          background: var(--text-primary); 
+          border-radius: 50%; 
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        
+        .icon-hover:hover { opacity: 0.8; transform: scale(1.05); }
+        .icon-hover:active { transform: scale(0.95); }
+      `}</style>
+
       {!isFullPlayerOpen && (
-        isMobile ? (
-          /* MOBILE MINI PLAYER */
-          
-          <div className="animate-player" // Добавляем класс анимации
-  style={styles.mobileContainer}>
-  <div style={styles.mobileProgressBar}>
-    {renderProgress(currentTime / (duration || 1))}
-  </div>
+        <div className="animate-player" style={isMobile ? styles.mobileContainer : styles.desktopContainer}>
+          {isMobile ? (
+            /* --- MOBILE VIEW --- */
+            <>
+              <div style={styles.mobileProgressBar}>
+                {renderProgress(currentTime / (duration || 1))}
+              </div>
 
-  <div onClick={() => setIsFullPlayerOpen(true)} style={styles.mobileTrackInfo}>
-    <img src={currentTrack.cover_url} style={styles.mobileCover} alt="" />
-    <div style={{ minWidth: 0 }}>
-      <div style={styles.mobileTitle}>{currentTrack.title}</div>
-      <div style={styles.mobileArtist}>{currentTrack.artist}</div>
-    </div>
-  </div>
+              <div onClick={() => setIsFullPlayerOpen(true)} style={styles.mobileTrackInfo}>
+                <img src={currentTrack.cover_url} style={styles.mobileCover} alt="" />
+                <div style={{ minWidth: 0 }}>
+                  <div style={styles.mobileTitle}>{currentTrack.title}</div>
+                  <div style={styles.mobileArtist}>
+                    {typeof currentTrack.artist === 'object' ? currentTrack.artist.name : currentTrack.artist}
+                  </div>
+                </div>
+              </div>
 
-  <div style={styles.mobileControls}>
-    {/* ДОБАВЛЕННАЯ КНОПКА НАЗАД */}
-    <SkipBack size={20} fill="currentColor" onClick={(e) => {
-      e.stopPropagation(); // Чтобы не открывался фулл-плеер при нажатии
-      handlePrev();
-    }} style={styles.icon} />
-
-    <div onClick={(e) => {
-      e.stopPropagation();
-      togglePlay();
-    }} style={styles.icon}>
-      {loadingTrackId === currentTrack?.deezer_id ? (
-        <div className="loader-spin"><AlignCenter size={24} /></div>
-      ) : isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
-    </div>
-
-    <SkipForward size={20} fill="currentColor" onClick={(e) => {
-      e.stopPropagation();
-      handleNext();
-    }} style={styles.icon} />
-  </div>
-</div>
-        ) : (
-          /* DESKTOP PLAYER */
-          <div style={styles.desktopContainer}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+              <div style={styles.mobileControls}>
+                <SkipBack className="icon-hover" size={22} fill="currentColor" onClick={(e) => { e.stopPropagation(); handlePrev(); }} style={styles.icon} />
+                <div onClick={handleToggle} className="icon-hover" style={styles.icon}>
+                  {loadingTrackId === currentTrack?.deezer_id ? (
+                    <div className="loader-spin"><AlignCenter size={24} /></div>
+                  ) : localIsPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
+                </div>
+                <SkipForward className="icon-hover" size={22} fill="currentColor" onClick={(e) => { e.stopPropagation(); handleNext(); }} style={styles.icon} />
+              </div>
+            </>
+          ) : (
+            /* --- DESKTOP VIEW --- */
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '24px' }}>
+              
+              {/* Левая часть: Инфо */}
               <div onClick={() => setIsFullPlayerOpen(true)} style={styles.desktopTrackInfo}>
                 <img src={currentTrack.cover_url} style={styles.desktopCover} alt="" />
                 <div style={{ minWidth: 0 }}>
                   <div style={styles.desktopTitle}>{currentTrack.title}</div>
-                  <div style={styles.desktopArtist}>{currentTrack.artist}</div>
+                  <div style={styles.desktopArtist}>
+                    {typeof currentTrack.artist === 'object' ? currentTrack.artist.name : currentTrack.artist}
+                  </div>
                 </div>
               </div>
 
+              {/* Центральная часть: Управление */}
               <div style={styles.desktopMainControls}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                  <SkipBack size={20} fill="currentColor" onClick={handlePrev} style={styles.icon} />
-                  <div onClick={togglePlay} style={styles.icon}>
+                  <SkipBack className="icon-hover" size={20} fill="currentColor" onClick={handlePrev} style={styles.icon} />
+                  <div onClick={handleToggle} className="icon-hover" style={styles.icon}>
                     {loadingTrackId === currentTrack?.deezer_id ? (
                       <div className="loader-spin"><AlignCenter size={24} /></div>
-                    ) : isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
+                    ) : localIsPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
                   </div>
-                  <SkipForward size={20} fill="currentColor" onClick={handleNext} style={styles.icon} />
+                  <SkipForward className="icon-hover" size={20} fill="currentColor" onClick={handleNext} style={styles.icon} />
                 </div>
 
                 <div style={styles.desktopProgressRow}>
                   <span style={styles.timeLabel}>{formatTime(currentTime)}</span>
                   <input
                     type="range" min="0" max={duration || 0} value={currentTime}
+                    className="player-range"
                     onChange={(e) => {
                       const val = Number(e.target.value);
-                      if (audioRef.current) {
-                        audioRef.current.currentTime = val;
-                        setCurrentTime(val);
-                      }
+                      if (audioRef.current) audioRef.current.currentTime = val;
+                      setCurrentTime(val);
                     }}
                     style={{
                       ...styles.desktopRange,
@@ -163,34 +183,38 @@ const AudioPlayer = ({
                 </div>
               </div>
 
+              {/* Правая часть: Доп. управление */}
               <div style={styles.desktopSideControls}>
                 <Heart
+                  className="icon-hover"
                   size={20} onClick={() => handleLike(currentTrack)}
                   fill={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "none"}
                   color={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "var(--text-primary)"}
                   style={styles.icon}
                 />
-                <input
-                  type="range" min="0" max="1" step="0.01" value={volume}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    setVolume(val);
-                    if (audioRef.current) audioRef.current.volume = val;
-                  }}
-                  style={{
-                    ...styles.volumeRange,
-                    background: `linear-gradient(to right, var(--text-primary) ${volume * 100}%, rgba(255,255,255,0.1) ${volume * 100}%)`
-                  }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                   <input
+                    type="range" min="0" max="1" step="0.01" value={volume}
+                    className="player-range"
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setVolume(val);
+                      if (audioRef.current) audioRef.current.volume = val;
+                    }}
+                    style={{
+                      ...styles.volumeRange,
+                      background: `linear-gradient(to right, var(--text-primary) ${volume * 100}%, rgba(255,255,255,0.1) ${volume * 100}%)`
+                    }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )
+          )}
+        </div>
       )}
     </>
   );
 };
-
 const styles = {
   icon: { cursor: 'pointer' },
   mobileContainer: {

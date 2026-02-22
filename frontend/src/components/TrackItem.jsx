@@ -145,7 +145,6 @@ const TrackItem = ({
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <Pause size={18} fill="currentColor" />
           </div>
         )}
       </div>

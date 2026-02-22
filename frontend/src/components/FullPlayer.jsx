@@ -124,12 +124,13 @@ const LyricsView = ({ currentTrack, currentTime, audioRef, isActive, onSwipeDown
 // --- ОСНОВНОЙ ПЛЕЕР ---
 
 const FullPlayer = ({
-  isOpen, currentTrack, onClose, isPlaying, togglePlay,
+  isOpen, currentTrack, onClose, isPlaying: isPlayingProp, togglePlay, // переименовали проп
   currentTime, setCurrentTime, duration, formatTime,
   audioRef, handleNext, handlePrev, isShuffle, setIsShuffle,
   repeatMode, toggleRepeat, handleLike, favoriteTrackIds, onArtistClick,
   backendBaseUrl
 }) => {
+  const [localIsPlaying, setLocalIsPlaying] = useState(isPlayingProp);
   const [showLyrics, setShowLyrics] = useState(false);
   const [volume, setVolume] = useState(1);
   const [showVolumeBar, setShowVolumeBar] = useState(false);
@@ -143,7 +144,32 @@ const FullPlayer = ({
   const volumeContainerRef = useRef(null);
   const touchStartRef = useRef({ x: 0, y: 0 });
   const lastVolumeUpdateRef = useRef(0);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
 
+    const syncState = () => {
+      setLocalIsPlaying(!audio.paused);
+    };
+
+    // Слушаем события напрямую от элемента
+    audio.addEventListener('play', syncState);
+    audio.addEventListener('pause', syncState);
+    audio.addEventListener('playing', syncState);
+
+    // Устанавливаем начальное значение
+    setLocalIsPlaying(!audio.paused);
+
+    return () => {
+      audio.removeEventListener('play', syncState);
+      audio.removeEventListener('pause', syncState);
+      audio.removeEventListener('playing', syncState);
+    };
+  }, [audioRef, currentTrack, isOpen]);
+
+  useEffect(() => {
+    setLocalIsPlaying(isPlayingProp);
+  }, [isPlayingProp]);
   useEffect(() => { 
     if (!isOpen) setShowLyrics(false); 
   }, [isOpen, currentTrack]);
@@ -617,35 +643,64 @@ const FullPlayer = ({
             </div>
           </div>
 
-          <div style={styles.mainControlsRow}>
-            <div style={styles.controlsWrapper}>
-              <div className="icon-center" style={styles.sideControlBox}>
-                <Shuffle 
-                  size="24px" 
-                  onClick={() => setIsShuffle(!isShuffle)} 
-                  style={{ color: isShuffle ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer', opacity: isShuffle ? 1 : 0.6 }} 
-                />
-              </div>
-              
-              <div className="icon-center" style={styles.stepControlBox}>
-                <SkipBack size="42px" fill="currentColor" onClick={handlePrev} style={styles.controlIcon} />
-              </div>
-              
-              <div className="icon-center" style={styles.playControlBox}>
-                <div onClick={togglePlay} style={styles.playButtonRaw} className="icon-center">
-                    {isPlaying ? <Pause size="75" fill="currentColor" stroke="none" /> : <Play size="75" fill="currentColor" stroke="none" />}
-                </div>
-              </div>
-              
-              <div className="icon-center" style={styles.stepControlBox}>
-                <SkipForward size="42px" fill="currentColor" onClick={handleNext} style={styles.controlIcon} />
-              </div>
-              
-              <div className="icon-center" onClick={toggleRepeat} style={{ ...styles.sideControlBox, color: repeatMode !== 'none' ? 'var(--accent-color)' : 'var(--text-primary)', cursor: 'pointer', opacity: repeatMode !== 'none' ? 1 : 0.6 }}>
-                {repeatMode === 'one' ? <Repeat1 size="26px" /> : <Repeat size="26px" />}
-              </div>
-            </div>
-          </div>
+<div style={styles.mainControlsRow}>
+  <div style={styles.controlsWrapper}>
+    {/* Shuffle */}
+    <div className="icon-center" style={styles.sideControlBox}>
+      <Shuffle 
+        size="24px" 
+        onClick={() => setIsShuffle(!isShuffle)} 
+        style={{ 
+          color: isShuffle ? 'var(--accent-color)' : 'var(--text-primary)', 
+          cursor: 'pointer', 
+          opacity: isShuffle ? 1 : 0.6 
+        }} 
+      />
+    </div>
+    
+    {/* Назад */}
+    <div className="icon-center" style={styles.stepControlBox}>
+      <SkipBack size="42px" fill="currentColor" onClick={handlePrev} style={styles.controlIcon} />
+    </div>
+    
+    {/* ЦЕНТРАЛЬНАЯ КНОПКА PLAY/PAUSE */}
+    <div className="icon-center" style={styles.playControlBox}>
+      <div 
+        onClick={(e) => {
+          e.stopPropagation();
+          // Сначала меняем звук
+          togglePlay();
+          // Затем мгновенно меняем иконку (оптимистичный апдейт)
+          setLocalIsPlaying(prev => !prev);
+        }} 
+        style={styles.playButtonRaw} 
+        className="icon-center"
+      >
+          {/* Используем локальный стейт, который связан с аудио-тегом */}
+          {localIsPlaying ? (
+            <Pause size="75" fill="currentColor" stroke="none" />
+          ) : (
+            <Play size="75" fill="currentColor" stroke="none" />
+          )}
+      </div>
+    </div>
+    
+    {/* Вперед */}
+    <div className="icon-center" style={styles.stepControlBox}>
+      <SkipForward size="42px" fill="currentColor" onClick={handleNext} style={styles.controlIcon} />
+    </div>
+    
+    {/* Repeat */}
+    <div className="icon-center" onClick={toggleRepeat} style={{ 
+      ...styles.sideControlBox, 
+      color: repeatMode !== 'none' ? 'var(--accent-color)' : 'var(--text-primary)', 
+      cursor: 'pointer', 
+      opacity: repeatMode !== 'none' ? 1 : 0.6 
+    }}>
+      {repeatMode === 'one' ? <Repeat1 size="26px" /> : <Repeat size="26px" />}
+    </div>
+  </div>
+</div>
         </div>
       </div>
     </div>
