@@ -395,10 +395,10 @@ const FullPlayer = ({
   .lyrics-toggle-icon { transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
   .lyrics-toggle-rotated { transform: rotate(180deg); }
   
-  .full-player-overlay {
-    transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
-    transform: translateY(0); opacity: 1;
-  }
+.full-player-overlay {
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  transform: translateY(0);
+}
   .full-player-overlay.closing {
     transition-delay: 0.15s; transform: translateX(100%); opacity: 0.5;
   }
@@ -406,9 +406,6 @@ const FullPlayer = ({
   @keyframes slideInUp {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
-  }
-  .full-player-overlay {
-    animation: slideInUp 0.5s cubic-bezier(0.32, 0.72, 0, 1);
   }
 `}</style>
 
