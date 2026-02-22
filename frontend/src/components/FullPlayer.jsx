@@ -289,21 +289,26 @@ const handleCloseWithAnim = () => {
 .track-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 12px;
-  height: 12px;
-  background: transparent;
+  width: 20px; /* На тачскринах лучше делать бегунок побольше */
+  height: 20px;
+  background: black;
   border-radius: 50%;
-  box-shadow: none;
+  cursor: pointer;
+  opacity: 0.01;
 }
 
+/* Для Firefox */
 .track-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  background: transparent;
+  width: 20px; /* На тачскринах лучше делать бегунок побольше */
+  height: 20px;
+  background: black;
   border-radius: 50%;
-  border: none;
-  box-shadow: none;
+  border: none; /* У Firefox бывает дефолтная рамка */
+  cursor: pointer;
+  opacity: 0.01;
 }
+
+  
 
   .ios-volume-popover {
     position: absolute; top: 45px; left: 0;
