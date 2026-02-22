@@ -49,6 +49,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		api.GET("/tracks/status/:id", h.CheckStatus)
 		api.GET("/queue/stats", h.GetQueueStats)
 		api.GET("/search/album", h.SearchAlbumsDZ)
+		api.GET("/artist/:id", h.GetArtistDetails)
+		api.GET("/artist/:id/top", h.GetArtistTopTracks)
+		api.GET("/artist/:id/albums", h.GetArtistAlbums)
+		api.GET("/album/:id", h.GetAlbumDetails)
 	}
 }
 
@@ -317,4 +321,62 @@ func (h *Handler) SearchAlbumsDZ(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, albums)
+}
+
+func (h *Handler) GetArtistDetails(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "artist id is required"})
+		return
+	}
+
+	artist, err := h.searchDZUC.GetArtistByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch artist details"})
+		return
+	}
+
+	c.JSON(http.StatusOK, artist)
+}
+
+// GetArtistTopTracks возвращает популярные треки артиста (обычно топ-5 или топ-10)
+func (h *Handler) GetArtistTopTracks(c *gin.Context) {
+	id := c.Param("id")
+	tracks, err := h.searchDZUC.GetArtistTopTracks(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch top tracks"})
+		return
+	}
+
+	c.JSON(http.StatusOK, tracks)
+}
+
+// GetArtistAlbums возвращает список альбомов артиста
+func (h *Handler) GetArtistAlbums(c *gin.Context) {
+	id := c.Param("id")
+	albums, err := h.searchDZUC.GetArtistAlbums(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch albums"})
+		return
+	}
+
+	c.JSON(http.StatusOK, albums)
+}
+
+func (h *Handler) GetAlbumDetails(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "album id is required"})
+		return
+	}
+
+	// Вызываем usecase. Метод GetAlbumByID нужно будет добавить в SearchUsecaseDZ
+	album, err := h.searchDZUC.GetAlbumByID(c.Request.Context(), id)
+	if err != nil {
+		slog.Error("Failed to fetch album details", "id", id, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch album details"})
+		return
+	}
+
+	c.JSON(http.StatusOK, album)
 }

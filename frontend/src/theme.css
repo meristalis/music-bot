@@ -117,3 +117,111 @@ input[type="range"]::-moz-range-thumb {
 input[type="range"]:focus {
   outline: none;
 }
+
+.artist-page-container {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg-color);
+  z-index: 2000; /* Выше всего остального */
+  overflow-y: auto;
+  padding-bottom: 140px;
+}
+
+.artist-hero {
+  height: 380px;
+  background-size: cover;
+  background-position: center 20%;
+  display: flex;
+  align-items: flex-end;
+  padding: 24px;
+  position: relative;
+}
+
+.artist-back-btn {
+  position: absolute;
+  top: 20px; right: 20px;
+  background: rgba(0,0,0,0.4);
+  border: none; color: white;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.artist-profile-pic {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  border: 2px solid rgba(255,255,255,0.1);
+}
+
+.artist-hero-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.artist-main-name {
+  font-size: clamp(32px, 8vw, 56px);
+  font-weight: 900;
+  margin: 8px 0;
+  letter-spacing: -2px;
+}
+
+.verified-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.artist-section {
+  padding: 24px 16px 0;
+}
+
+.section-h {
+  font-size: 22px;
+  margin-bottom: 16px;
+}
+
+.track-row-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.track-index {
+  width: 30px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.albums-horiz-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 16px;
+  padding-bottom: 10px;
+}
+
+.album-mini-card {
+  min-width: 140px;
+  max-width: 140px;
+}
+
+.album-mini-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.album-mini-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

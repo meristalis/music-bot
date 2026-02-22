@@ -6,6 +6,8 @@ import AudioPlayer from './components/AudioPlayer';
 import Header from './components/Header';
 import ArtistItem, { ArtistsSection } from './components/ArtistItem';
 import AlbumItem, { AlbumsSection } from './components/AlbumItem';
+import AlbumPage from './components/AlbumPage';
+import ArtistPage from './components/ArtistPage';
 import { useAudioPlayer } from './hooks/useAudioPlayer'; 
 import './App.css';
 import './theme.css';
@@ -47,6 +49,9 @@ function App() {
   const [searchAlbums, setSearchAlbums] = useState([]);
   const debouncedSearch = useDebounce(searchQuery, 500);
 
+
+  const [activeArtistId, setActiveArtistId] = useState(null);
+  const [activeAlbumId, setActiveAlbumId] = useState(null);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
   const [isDownloadPanelOpen, setIsDownloadPanelOpen] = useState(false);
 
@@ -460,7 +465,7 @@ useEffect(() => {
           </div>
         </div>
       )}
-
+      
       <Header 
         tgUser={tgUser}
         isDownloadPanelOpen={isDownloadPanelOpen}
@@ -502,26 +507,59 @@ useEffect(() => {
         <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '16px' }}>
           {isSearchOpen ? (isSearching ? 'Поиск...' : 'Результаты') : 'Медиатека'}
         </h3>
+        {isSearchOpen && (
+  <>
+    <ArtistsSection 
+      artists={searchArtists} 
+      onArtistClick={(artist) => setActiveArtistId(artist.id)}
+      onAlbumClick={(album) => setActiveAlbumId(album.id)}
+    />
+    
+    <AlbumsSection 
+      albums={searchAlbums} 
+      onAlbumClick={(album) => setActiveAlbumId(album.id)}
+    />
+  </>
+)}
         {(isSearchOpen ? (searchResults || []) : (library || [])).map(track => (
           <TrackItem key={`lib-${track.deezer_id}`} track={track} isActive={player.currentTrack?.deezer_id === track.deezer_id} isPlaying={player.isPlaying} pendingData={pendingTracks[track.deezer_id]} now={now} onClick={handleTrackSelect} />
         ))}
         {!isSearchOpen && library.length === 0 && (
           <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '40px' }}>Ваша медиатека пуста</p>
         )}
-{isSearchOpen && (
-  <>
-    <ArtistsSection 
-      artists={searchArtists} 
-      onArtistClick={(artist) => setSearchQuery(artist.name)} 
-    />
-    
-    <AlbumsSection 
-      albums={searchAlbums} 
-      onAlbumClick={(album) => setSearchQuery(`${album.artist_name} ${album.title}`)} 
-    />
-  </>
+              {/* Страница артиста */}
+{activeArtistId && (
+  <ArtistPage 
+    artistId={activeArtistId}
+    backendBaseUrl={backendBaseUrl}
+    onBack={() => setActiveArtistId(null)} 
+    onTrackSelect={handleTrackSelect}
+    onAlbumClick={(album) => {
+      setSearchQuery(`${album.artist_name || ''} ${album.title}`);
+      setIsSearchOpen(true);
+    }}
+    currentTrack={player.currentTrack}
+    isPlaying={player.isPlaying}
+    pendingTracks={pendingTracks}
+    now={now}
+  />
 )}
+{activeAlbumId && (
+  <AlbumPage 
+    albumId={activeAlbumId}
+    backendBaseUrl={backendBaseUrl}
+    onBack={() => setActiveAlbumId(null)}
+    onTrackSelect={handleTrackSelect}
+    currentTrack={player.currentTrack}
+    isPlaying={player.isPlaying}
+    pendingTracks={pendingTracks}
+    now={now}
+  />
+)}
+
       </div>
+
+
 
       <FullPlayer 
   {...player} 

@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// Структура для поиска треков (уже была)
 type DeezerSearchResponse struct {
 	Data []struct {
 		ID       int64  `json:"id"`
@@ -25,7 +24,6 @@ type DeezerSearchResponse struct {
 	} `json:"data"`
 }
 
-// --- НОВОЕ: Структура для поиска артистов ---
 type DeezerArtistResponse struct {
 	Data []struct {
 		ID            int64  `json:"id"`
@@ -33,6 +31,46 @@ type DeezerArtistResponse struct {
 		PictureMedium string `json:"picture_medium"`
 		NbAlbum       int    `json:"nb_album"`
 	} `json:"data"`
+}
+
+type DeezerAlbumResponse struct {
+	Data []struct {
+		ID          int64  `json:"id"`
+		Title       string `json:"title"`
+		CoverMedium string `json:"cover_medium"`
+		Artist      struct {
+			Name string `json:"name"`
+		} `json:"artist"`
+	} `json:"data"`
+}
+
+// --- НОВОЕ: Структуры для экрана артиста ---
+
+type DeezerArtistDetail struct {
+	ID            int64  `json:"id"`
+	Name          string `json:"name"`
+	PictureMedium string `json:"picture_medium"`
+	PictureXL     string `json:"picture_xl"`
+	NbFan         int    `json:"nb_fan"`
+	NbAlbum       int    `json:"nb_album"`
+}
+
+type DeezerAlbumDetail struct {
+	ID          int64  `json:"id"`
+	Title       string `json:"title"`
+	CoverMedium string `json:"cover_medium"`
+	ReleaseDate string `json:"release_date"`
+	NbTracks    int    `json:"nb_tracks"`
+	Artist      struct {
+		Name string `json:"name"`
+	} `json:"artist"`
+	Tracks struct {
+		Data []struct {
+			ID       int64  `json:"id"`
+			Title    string `json:"title"`
+			Duration int    `json:"duration"`
+		} `json:"data"`
+	} `json:"tracks"`
 }
 
 type SearchUsecaseDZ struct {
@@ -128,20 +166,6 @@ func (s *SearchUsecaseDZ) SearchArtists(ctx context.Context, query string) ([]in
 	return result, nil
 }
 
-// --- НОВОЕ: Структура для поиска альбомов ---
-type DeezerAlbumResponse struct {
-	Data []struct {
-		ID          int64  `json:"id"`
-		Title       string `json:"title"`
-		CoverMedium string `json:"cover_medium"`
-		Artist      struct {
-			Name string `json:"name"`
-		} `json:"artist"`
-	} `json:"data"`
-}
-
-// ... существующие методы ...
-
 // SearchAlbums — Поиск альбомов через Deezer API
 func (s *SearchUsecaseDZ) SearchAlbums(ctx context.Context, query string) ([]interface{}, error) {
 	// 1. Подготовка URL
@@ -184,4 +208,106 @@ func (s *SearchUsecaseDZ) SearchAlbums(ctx context.Context, query string) ([]int
 	}
 
 	return result, nil
+}
+
+// GetArtistByID — Информация об артисте
+func (s *SearchUsecaseDZ) GetArtistByID(ctx context.Context, id string) (interface{}, error) {
+	apiURL := fmt.Sprintf("https://api.deezer.com/artist/%s", id)
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var detail DeezerArtistDetail
+	if err := json.NewDecoder(resp.Body).Decode(&detail); err != nil {
+		return nil, err
+	}
+	return detail, nil
+}
+
+// GetArtistTopTracks — Популярные треки артиста
+func (s *SearchUsecaseDZ) GetArtistTopTracks(ctx context.Context, id string) ([]domain.Track, error) {
+	apiURL := fmt.Sprintf("https://api.deezer.com/artist/%s/top?limit=10", id)
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var dzResp DeezerSearchResponse // структура совпадает
+	if err := json.NewDecoder(resp.Body).Decode(&dzResp); err != nil {
+		return nil, err
+	}
+
+	tracks := make([]domain.Track, 0, len(dzResp.Data))
+	for _, d := range dzResp.Data {
+		tracks = append(tracks, domain.Track{
+			DeezerID: d.ID,
+			Title:    d.Title,
+			Artist:   d.Artist.Name,
+			Duration: d.Duration,
+			CoverURL: d.Album.CoverMedium,
+		})
+	}
+	return tracks, nil
+}
+
+// GetArtistAlbums — Список альбомов артиста
+func (s *SearchUsecaseDZ) GetArtistAlbums(ctx context.Context, id string) ([]interface{}, error) {
+	apiURL := fmt.Sprintf("https://api.deezer.com/artist/%s/albums", id)
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var dzResp DeezerAlbumResponse // структура совпадает
+	if err := json.NewDecoder(resp.Body).Decode(&dzResp); err != nil {
+		return nil, err
+	}
+
+	result := make([]interface{}, 0, len(dzResp.Data))
+	for _, a := range dzResp.Data {
+		result = append(result, map[string]interface{}{
+			"id":           a.ID,
+			"title":        a.Title,
+			"cover_medium": a.CoverMedium,
+			"artist_name":  a.Artist.Name,
+		})
+	}
+	return result, nil
+}
+
+// GetAlbumByID — Детальная информация об альбоме вместе с треками
+func (s *SearchUsecaseDZ) GetAlbumByID(ctx context.Context, id string) (interface{}, error) {
+	apiURL := fmt.Sprintf("https://api.deezer.com/album/%s", id)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("deezer album detail api call failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("deezer api returned status: %d", resp.StatusCode)
+	}
+
+	var detail DeezerAlbumDetail
+	if err := json.NewDecoder(resp.Body).Decode(&detail); err != nil {
+		return nil, fmt.Errorf("failed to decode album detail: %w", err)
+	}
+
+	return detail, nil
 }
