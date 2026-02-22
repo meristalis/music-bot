@@ -322,15 +322,15 @@ const handleCloseWithAnim = () => {
   .ios-volume-input::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 0;
-    height: 0;
+    width: 10px;
+    height: 10px;
     display: none;
     opacity: 0;
   }
 
   .ios-volume-input::-moz-range-thumb {
-    width: 0;
-    height: 0;
+    width: 10px;
+    height: 10px;
     display: none;
     opacity: 0;
     border: none;
