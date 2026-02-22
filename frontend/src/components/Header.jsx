@@ -15,6 +15,32 @@ const Header = ({
 
   return (
     <div style={styles.headerContainer}>
+      <style>{`
+        /* Анимация наполнения: от 0% до 100%, затем сброс */
+        @keyframes fill-down {
+          0% {
+            clip-path: inset(0 0 100% 0);
+            opacity: 0.2;
+          }
+          70% {
+            clip-path: inset(0 0 0% 0);
+            opacity: 1;
+          }
+          90% {
+            clip-path: inset(0 0 0% 0);
+            opacity: 1;
+          }
+          100% {
+            clip-path: inset(0 0 0% 0);
+            opacity: 0;
+          }
+        }
+
+        .download-fill-active {
+          animation: fill-down 2s infinite ease-in-out;
+        }
+      `}</style>
+
       {/* ПРОФИЛЬ */}
       <div style={styles.profileSection}>
         <div style={styles.avatarWrapper}>
@@ -44,36 +70,43 @@ const Header = ({
       {/* КНОПКИ УПРАВЛЕНИЯ */}
       <div style={styles.actionsSection}>
         
-        {/* ИКОНКА ЗАГРУЗОК */}
-        {(hasItemsInQueue || isDownloading) && (
-          <div 
-            onClick={() => setIsDownloadPanelOpen(!isDownloadPanelOpen)} 
-            style={styles.downloadIconWrapper}
-          >
-            {/* ФОНОВАЯ ИКОНКА (тусклая) */}
-            <ArrowDownToLine 
-              size={22} 
-              style={{ 
-                color: 'var(--text-primary)',
-                opacity: 0.2,
-                position: 'absolute'
-              }} 
-            />
+        {/* ИКОНКА ЗАГРУЗОК (Показывается всегда) */}
+        <div 
+          onClick={() => setIsDownloadPanelOpen(!isDownloadPanelOpen)} 
+          style={{
+              ...styles.downloadIconWrapper,
+              background: isDownloadPanelOpen ? 'rgba(255,107,129,0.1)' : 'rgba(128,128,128,0.05)'
+          }}
+        >
+          {/* 1. ФОНОВАЯ ИКОНКА (тусклая - видна всегда) */}
+          <ArrowDownToLine 
+            size={22} 
+            style={{ 
+              color: 'var(--text-primary)',
+              opacity: 0.15,
+              position: 'absolute'
+            }} 
+          />
 
-            {/* АНИМИРОВАННАЯ ИКОНКА */}
-            {isDownloading && (
-  <div className="animate-download" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-    <ArrowDownToLine 
-      size={22} 
-      /* Убираем inline-color, чтобы работал градиент из CSS */
-      style={{
-        display: 'block'
-      }} 
-    />
-  </div>
-)}
+          {/* 2. АКЦЕНТНАЯ ИКОНКА (заливка) */}
+          <div style={{
+              position: 'absolute',
+              color: 'var(--accent-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              // Если ничего не качается и очередь пуста - скрываем цветной слой
+              // Если скачано и лежит в очереди - заливаем полностью
+              // Если в процессе - доверяем анимации или ставим clip-path none
+              opacity: (isDownloading || hasItemsInQueue) ? 1 : 0,
+              clipPath: isDownloading ? 'none' : (hasItemsInQueue ? 'inset(0 0 0 0)' : 'inset(0 0 100% 0)'),
+              transition: 'opacity 0.3s ease, clip-path 0.3s ease'
+          }}
+          className={isDownloading ? "download-fill-active" : ""}
+          >
+              <ArrowDownToLine size={22} />
           </div>
-        )}
+        </div>
 
         {/* ИКОНКА ПОИСКА */}
         <div 
@@ -81,7 +114,7 @@ const Header = ({
           style={{
             ...styles.searchIconWrapper,
             color: isSearchOpen ? 'var(--accent-color)' : 'var(--text-primary)',
-            background: isSearchOpen ? 'rgba(128,128,128,0.1)' : 'rgba(128,128,128,0.05)'
+            background: isSearchOpen ? 'rgba(255,107,129,0.1)' : 'rgba(128,128,128,0.05)'
           }}
         >
           {isSearchOpen ? <X size={24} /> : <Search size={22} />}
@@ -150,8 +183,8 @@ const styles = {
     justifyContent: 'center',
     width: '38px',
     height: '38px',
-    background: 'rgba(128,128,128,0.05)',
-    borderRadius: '50%'
+    borderRadius: '50%',
+    transition: 'all 0.2s ease'
   },
   searchIconWrapper: {
     cursor: 'pointer',

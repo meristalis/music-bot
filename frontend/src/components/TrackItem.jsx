@@ -27,17 +27,22 @@ const TrackItem = ({
   return (
     <div 
       onClick={() => onClick(track)}
+      className="track-item-row"
       style={{
         display: 'flex', 
         alignItems: 'center', 
         gap: '12px', 
-        padding: '8px 4px 8px 12px', // Увеличили правый отступ внутри контейнера
+        padding: '8px 4px 8px 12px', 
         borderRadius: '12px', 
         cursor: 'pointer',
         background: isActive ? 'rgba(128, 128, 128, 0.12)' : 'transparent',
         transition: 'all 0.2s ease',
         position: 'relative',
-        overflow: 'hidden'
+        
+        // ВОТ ЭТА СТРОЧКА ВСЁ ИСПРАВИТ:
+        flexShrink: 0, 
+        
+        marginBottom: '2px'
       }}>
       
       <style>{`
@@ -45,6 +50,9 @@ const TrackItem = ({
           0% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.1); opacity: 0.7; }
           100% { transform: scale(1); opacity: 1; }
+        }
+        .track-item-row:hover {
+          background: rgba(128, 128, 128, 0.08);
         }
       `}</style>
       
@@ -119,7 +127,7 @@ const TrackItem = ({
         </div>
       </div>
 
-      {/* Правая часть: Иконка с отступом 10px от края */}
+      {/* Правая часть: Иконка */}
       <div style={{ 
         width: '24px', 
         height: '24px',
@@ -127,7 +135,7 @@ const TrackItem = ({
         alignItems: 'center', 
         justifyContent: 'center',
         flexShrink: 0,
-        marginRight: '10px' // Тот самый отступ от правого края
+        marginRight: '12px' 
       }}>
         {!isPending && isActive && isPlaying && (
           <div style={{ 
@@ -141,6 +149,68 @@ const TrackItem = ({
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// Контейнер для списка треков с кастомным скроллбаром
+export const TracksContainer = ({ children, maxHeight = 'none' }) => {
+  return (
+    <div className="custom-tracks-scroll">
+      {children}
+      
+<style>{`
+        .custom-tracks-scroll {
+          display: flex;
+          flex-direction: column;
+          overflow-y: auto;
+          overflow-x: hidden;
+          max-height: ${maxHeight};
+          padding-right: 4px;
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
+          flex-shrink: 1;
+          min-height: 0;
+        }
+
+        /* 1. Базовый стиль: делаем скроллбар невидимым по умолчанию */
+        .custom-tracks-scroll::-webkit-scrollbar {
+          width: 6px;
+          transition: all 0.2s ease;
+        }
+
+        .custom-tracks-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        /* 2. Скрытый бегунок */
+        .custom-tracks-scroll::-webkit-scrollbar-thumb {
+          background: transparent; /* Полностью прозрачный */
+          border-radius: 10px;
+          transition: background 0.2s ease;
+        }
+
+        /* 3. Показываем плашку ТОЛЬКО при наведении на контейнер */
+        .custom-tracks-scroll:hover::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* 4. Делаем ярче, когда тянем саму плашку */
+        .custom-tracks-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Скрытие на мобилках (там он системный и мешает) */
+        @media (hover: none) {
+          .custom-tracks-scroll::-webkit-scrollbar {
+            display: none;
+          }
+          .custom-tracks-scroll {
+            scrollbar-width: none;
+            padding-right: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 };

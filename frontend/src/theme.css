@@ -13,11 +13,11 @@
 body {
   margin: 0;
   padding: 0;
-  /* Запрещаем выделение текста по всему приложению (кроме полей ввода) */
+  background-color: var(--bg-color); /* Добавь это */
   user-select: none;
   -webkit-user-select: none;
-  /* Улучшаем плавность скролла на iOS */
-  -webkit-overflow-scrolling: touch;
+  height: 100%;
+  overflow: hidden; /* Чтобы не было двойного скролла с контейнерами */
 }
 
 input {
@@ -92,10 +92,7 @@ button:active {
 }
 audio::-webkit-media-controls-enclosure,
 audio::-webkit-media-controls-panel,
-audio::-webkit-media-controls {
-    display: none !important;
-    -webkit-appearance: none;
-}
+audio::-webkit-media-controls { display: none !important; }
 
       input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -118,14 +115,6 @@ input[type="range"]:focus {
   outline: none;
 }
 
-.artist-page-container {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: var(--bg-color);
-  z-index: 2000; /* Выше всего остального */
-  overflow-y: auto;
-  padding-bottom: 140px;
-}
 
 .artist-hero {
   height: 380px;
@@ -197,13 +186,6 @@ input[type="range"]:focus {
   font-weight: 500;
 }
 
-.albums-horiz-scroll {
-  display: flex;
-  overflow-x: auto;
-  gap: 16px;
-  padding-bottom: 10px;
-}
-
 .album-mini-card {
   min-width: 140px;
   max-width: 140px;
@@ -224,4 +206,18 @@ input[type="range"]:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.custom-horizontal-scroll::-webkit-scrollbar,
+.album-scroll-content::-webkit-scrollbar,
+.artist-page-container::-webkit-scrollbar {
+  width: 6px;  /* Для вертикального */
+  height: 4px; /* Для горизонтального */
+}
+
+.custom-horizontal-scroll::-webkit-scrollbar-thumb,
+.album-scroll-content::-webkit-scrollbar-thumb,
+.artist-page-container::-webkit-scrollbar-thumb {
+  background: rgba(155, 155, 155, 0.2); /* Сделай чуть серым для универсальности */
+  border-radius: 10px;
 }

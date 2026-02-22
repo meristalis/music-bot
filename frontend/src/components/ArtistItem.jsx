@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 const ArtistItem = ({ artist, onClick }) => {
   return (
@@ -9,7 +9,7 @@ const ArtistItem = ({ artist, onClick }) => {
         flexDirection: 'column',
         alignItems: 'center',
         gap: '8px',
-        width: '90px', // фиксированная ширина для сетки скролла
+        width: '90px',
         cursor: 'pointer',
         flexShrink: 0,
         transition: 'transform 0.2s ease'
@@ -20,7 +20,7 @@ const ArtistItem = ({ artist, onClick }) => {
         position: 'relative',
         width: '80px',
         height: '80px',
-        borderRadius: '50%', // Артисты всегда круглые
+        borderRadius: '50%',
         overflow: 'hidden',
         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         background: 'var(--bg-surface)'
@@ -59,8 +59,24 @@ const ArtistItem = ({ artist, onClick }) => {
   );
 };
 
-// Вспомогательный компонент для горизонтального контейнера
 export const ArtistsSection = ({ artists, onArtistClick }) => {
+  const scrollRef = useRef(null);
+
+  // Добавляем горизонтальный скролл колесиком
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onWheel = (e) => {
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY * 1.5;
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [artists]);
+
   if (!artists || artists.length === 0) return null;
 
   return (
@@ -75,14 +91,16 @@ export const ArtistsSection = ({ artists, onArtistClick }) => {
         Артисты
       </h3>
       <div 
-        className="hide-scrollbar"
+        ref={scrollRef}
+        className="custom-horizontal-scroll"
         style={{
           display: 'flex',
           gap: '16px',
           overflowX: 'auto',
-          paddingBottom: '8px', // Отступ для тени
+          paddingBottom: '12px',
           paddingLeft: '4px',
-          WebkitOverflowScrolling: 'touch' // Плавный скролл на iOS
+          WebkitOverflowScrolling: 'touch',
+          scrollBehavior: 'smooth'
         }}
       >
         {artists.map(artist => (
@@ -93,6 +111,28 @@ export const ArtistsSection = ({ artists, onArtistClick }) => {
           />
         ))}
       </div>
+
+      <style>{`
+        .custom-horizontal-scroll::-webkit-scrollbar {
+          height: 4px;
+        }
+        .custom-horizontal-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-horizontal-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+        .custom-horizontal-scroll:hover::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+        }
+        
+        @media (hover: none) {
+          .custom-horizontal-scroll::-webkit-scrollbar {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 };

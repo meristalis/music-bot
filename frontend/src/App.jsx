@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import FullPlayer from './components/FullPlayer';
-import TrackItem from './components/TrackItem';
 import AudioPlayer from './components/AudioPlayer';
 import Header from './components/Header';
 import ArtistItem, { ArtistsSection } from './components/ArtistItem';
@@ -9,6 +8,7 @@ import AlbumItem, { AlbumsSection } from './components/AlbumItem';
 import AlbumPage from './components/AlbumPage';
 import ArtistPage from './components/ArtistPage';
 import { useAudioPlayer } from './hooks/useAudioPlayer'; 
+import TrackItem, { TracksContainer } from './components/TrackItem';
 import './App.css';
 import './theme.css';
 
@@ -449,8 +449,6 @@ useEffect(() => {
 
   return (
     <div className="app-container" style={{
-      padding: '16px', paddingBottom: player.currentTrack ? '140px' : '20px',
-      maxWidth: '600px', margin: '0 auto', minHeight: '100vh',
       background: 'var(--bg-color)', color: 'var(--text-color)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
     }}>
@@ -492,21 +490,39 @@ useEffect(() => {
       )}
 
       {isDownloadPanelOpen && (
-        <div style={{ marginBottom: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Загрузки</h3>
-            <span onClick={() => setDownloadQueue([])} style={{ color: 'var(--accent-color)', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}>Очистить</span>
-          </div>
-          {(downloadQueue || []).map(track => (
-            <TrackItem key={`q-${track.deezer_id}`} track={track} isFromQueue={true} isActive={player.currentTrack?.deezer_id === track.deezer_id} isPlaying={player.isPlaying} pendingData={pendingTracks[track.deezer_id]} now={now} onClick={handleTrackSelect} />
-          ))}
-        </div>
-      )}
+  <div style={{ marginBottom: '24px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <h3 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Загрузки</h3>
+      <span 
+        onClick={() => setDownloadQueue([])} 
+        style={{ color: 'var(--accent-color)', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
+      >
+        Очистить
+      </span>
+    </div>
+
+    {/* Оборачиваем загрузки в контейнер со скроллом */}
+    <TracksContainer>
+      {(downloadQueue || []).map(track => (
+        <TrackItem 
+          key={`q-${track.deezer_id}`} 
+          track={track} 
+          isFromQueue={true} 
+          isActive={player.currentTrack?.deezer_id === track.deezer_id} 
+          isPlaying={player.isPlaying} 
+          pendingData={pendingTracks[track.deezer_id]} 
+          now={now} 
+          onClick={handleTrackSelect} 
+        />
+      ))}
+    </TracksContainer>
+  </div>
+)}
 
       <div>
         <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '16px' }}>
-          {isSearchOpen ? (isSearching ? 'Поиск...' : 'Результаты') : 'Медиатека'}
-        </h3>
+    {isSearchOpen ? (isSearching ? 'Поиск...' : 'Результаты') : 'Медиатека'}
+  </h3>
         {isSearchOpen && (
   <>
     <ArtistsSection 
@@ -521,12 +537,28 @@ useEffect(() => {
     />
   </>
 )}
-        {(isSearchOpen ? (searchResults || []) : (library || [])).map(track => (
-          <TrackItem key={`lib-${track.deezer_id}`} track={track} isActive={player.currentTrack?.deezer_id === track.deezer_id} isPlaying={player.isPlaying} pendingData={pendingTracks[track.deezer_id]} now={now} onClick={handleTrackSelect} />
-        ))}
-        {!isSearchOpen && library.length === 0 && (
-          <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '40px' }}>Ваша медиатека пуста</p>
-        )}
+        <TracksContainer maxHeight={isSearchOpen ? "calc(100vh - 400px)" : "calc(100vh - 200px)"}>
+  {(isSearchOpen ? (searchResults || []) : (library || [])).map(track => (
+    <TrackItem 
+      key={`lib-${track.deezer_id}`} 
+      track={track} 
+      isActive={player.currentTrack?.deezer_id === track.deezer_id} 
+      isPlaying={player.isPlaying} 
+      pendingData={pendingTracks[track.deezer_id]} 
+      now={now} 
+      onClick={handleTrackSelect} 
+    />
+  ))}
+
+  {/* Добавляем "безопасную зону" в конце списка, если плеер активен */}
+  {player.currentTrack && <div style={{ height: '30px', flexShrink: 0 }} />}
+</TracksContainer>
+
+  {!isSearchOpen && library.length === 0 && (
+    <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginTop: '40px' }}>
+      Ваша медиатека пуста
+    </p>
+  )}
               {/* Страница артиста */}
 {activeArtistId && (
   <ArtistPage 
@@ -535,8 +567,7 @@ useEffect(() => {
     onBack={() => setActiveArtistId(null)} 
     onTrackSelect={handleTrackSelect}
     onAlbumClick={(album) => {
-      setSearchQuery(`${album.artist_name || ''} ${album.title}`);
-      setIsSearchOpen(true);
+      setActiveAlbumId(album.id);
     }}
     currentTrack={player.currentTrack}
     isPlaying={player.isPlaying}

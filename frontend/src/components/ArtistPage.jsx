@@ -109,90 +109,98 @@ const ArtistPage = ({
 
         {/* Секция альбомов: используем твой AlbumItem */}
         <section className="artist-section" style={{ marginTop: '20px' }}>
-          <h2 className="section-h">Альбомы</h2>
-          <div 
-            className="hide-scrollbar"
-            style={{
-              display: 'flex',
-              gap: '16px',
-              overflowX: 'auto',
-              paddingBottom: '10px',
-              WebkitOverflowScrolling: 'touch'
-            }}
-          >
-            {albums.map(album => (
-              <AlbumItem 
-                key={album.id} 
-                album={{
-                  ...album,
-                  artist_name: artist.name // прокидываем имя артиста, так как в API альбомов его может не быть
-                }} 
-                onClick={(alb) => {
-                   onAlbumClick(alb);
-                   onBack(); // закрываем страницу артиста, чтобы перейти к поиску альбома
-                }} 
-              />
-            ))}
-          </div>
-        </section>
+  {/* Передаем имя артиста каждому альбому перед тем, как отдать компоненту */}
+  <AlbumsSection 
+    albums={albums.map(alb => ({
+      ...alb,
+      artist_name: artist.name 
+    }))} 
+    onAlbumClick={onAlbumClick} 
+  />
+</section>
       </div>
 
       <style>{`
-        .artist-page-container {
-          position: fixed;
-          top: 0; left: 0; right: 0; bottom: 0;
-          background: var(--bg-color);
-          z-index: 999;
-          overflow-y: auto;
-          padding-bottom: 150px;
-        }
-        .artist-hero {
-          height: 320px;
-          background-size: cover;
-          background-position: center;
-          display: flex;
-          align-items: flex-end;
-          padding: 20px;
-          position: relative;
-        }
-        .artist-back-btn {
-          position: absolute;
-          top: 20px; right: 20px;
-          background: rgba(0,0,0,0.5);
-          border: none; color: white;
-          width: 36px; height: 36px;
-          border-radius: 50%;
-          cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          z-index: 10;
-        }
-        .artist-profile-pic {
-          width: 90px; height: 90px;
-          border-radius: 50%;
-          object-fit: cover;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-          margin-bottom: 10px;
-        }
-        .artist-main-name {
-          font-size: 32px;
-          font-weight: 800;
-          margin: 0;
-          color: white;
-          text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-        .verified-badge {
-          display: flex; align-items: center;
-          font-size: 12px; color: white; font-weight: 600;
-          margin-bottom: 4px;
-        }
-        .artist-fans {
-          font-size: 13px; color: rgba(255,255,255,0.8); margin: 4px 0 0;
-        }
-        .artist-section { padding: 20px 16px 0; }
-        .section-h { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+  .artist-page-container {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--bg-color);
+    z-index: 999;
+    overflow-y: auto;
+    padding-bottom: 150px;
+    /* Добавляем твой стиль вертикального скролла */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+
+  /* Красивый вертикальный скролл страницы на ПК */
+  .artist-page-container::-webkit-scrollbar {
+    width: 6px;
+  }
+  .artist-page-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .artist-page-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  .artist-page-container:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Скрываем вертикальный скролл на мобилках */
+  @media (hover: none) {
+    .artist-page-container::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .artist-hero {
+    height: 320px;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: flex-end;
+    padding: 20px;
+    position: relative;
+  }
+  .artist-back-btn {
+    position: absolute;
+    top: 20px; right: 20px;
+    background: rgba(0,0,0,0.5);
+    border: none; color: white;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  .artist-profile-pic {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    margin-bottom: 10px;
+  }
+  .artist-main-name {
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0;
+    color: white;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+  .verified-badge {
+    display: flex; align-items: center;
+    font-size: 12px; color: white; font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .artist-fans {
+    font-size: 13px; color: rgba(255,255,255,0.8); margin: 4px 0 0;
+  }
+  .artist-section { padding: 20px 16px 0; }
+  .section-h { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+
+`}</style>
     </div>
   );
 };

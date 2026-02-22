@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 const AlbumItem = ({ album, onClick }) => {
   return (
@@ -8,7 +8,7 @@ const AlbumItem = ({ album, onClick }) => {
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
-        width: '120px', // Альбомы чуть шире артистов
+        width: '120px',
         cursor: 'pointer',
         flexShrink: 0,
         transition: 'transform 0.2s ease'
@@ -18,7 +18,7 @@ const AlbumItem = ({ album, onClick }) => {
       <div style={{
         width: '120px',
         height: '120px',
-        borderRadius: '12px', // Скругленные углы, но не круг
+        borderRadius: '12px',
         overflow: 'hidden',
         boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
         background: 'var(--bg-surface)'
@@ -60,6 +60,24 @@ const AlbumItem = ({ album, onClick }) => {
 };
 
 export const AlbumsSection = ({ albums, onAlbumClick }) => {
+  const scrollRef = useRef(null);
+
+  // Добавляем обработку колесика мыши для горизонтального скролла
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onWheel = (e) => {
+      if (e.deltaY === 0) return;
+      // Если прокрутка вертикальная, переводим её в горизонтальную
+      e.preventDefault();
+      el.scrollLeft += e.deltaY * 1.5; // Коэффициент скорости прокрутки
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [albums]);
+
   if (!albums || albums.length === 0) return null;
 
   return (
@@ -68,20 +86,45 @@ export const AlbumsSection = ({ albums, onAlbumClick }) => {
         Альбомы
       </h3>
       <div 
-        className="hide-scrollbar"
+        ref={scrollRef}
+        className="custom-horizontal-scroll"
         style={{
           display: 'flex',
           gap: '16px',
           overflowX: 'auto',
-          paddingBottom: '10px',
+          paddingBottom: '12px',
           paddingLeft: '4px',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          scrollBehavior: 'smooth'
         }}
       >
         {albums.map(album => (
           <AlbumItem key={album.id} album={album} onClick={onAlbumClick} />
         ))}
       </div>
+
+      {/* Стили для скроллбара, чтобы он был аккуратным на ПК */}
+      <style>{`
+        .custom-horizontal-scroll::-webkit-scrollbar {
+          height: 4px;
+        }
+        .custom-horizontal-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-horizontal-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+        .custom-horizontal-scroll:hover::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+        }
+        /* Скрываем скроллбар на мобилках (iOS/Android), оставляем только на ПК */
+        @media (hover: none) {
+          .custom-horizontal-scroll::-webkit-scrollbar {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 };
