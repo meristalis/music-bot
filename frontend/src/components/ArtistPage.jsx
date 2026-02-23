@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
 import axios from 'axios';
 import TrackItem, { TracksContainer } from './TrackItem';
@@ -43,13 +43,23 @@ const ArtistPage = ({
     fetchArtistData();
   }, [artistId, backendBaseUrl]);
 
+  // Формируем чистый список треков для очереди воспроизведения
+  const formattedTopTracks = useMemo(() => {
+    return topTracks.slice(0, 10).map(track => ({
+      ...track,
+      deezer_id: track.deezer_id || track.id,
+      // Гарантируем наличие данных об артисте и обложке, если их нет в объекте трека
+      artist: track.artist?.name || artist?.name,
+      cover_url: track.album?.cover_small || track.cover_url || artist?.picture_small
+    }));
+  }, [topTracks, artist]);
+
   if (loading) return <div className="loader">Загрузка...</div>;
   if (!artist) return null;
 
   return (
     <div className={`artist-page-scroll-container screen-overlay ${isClosing ? 'is-closing' : ''}`}>
         
-      {/* КНОПКА ЗАКРЫТИЯ С АНИМАЦИЕЙ */}
       <button 
         onClick={handleBackWithAnim} 
         className={`ui-close-btn-minimal artist-close-pos ${isClosing ? 'btn-exit' : 'btn-enter'}`}
@@ -87,17 +97,18 @@ const ArtistPage = ({
           <section className="tracks-section">
             <h2 className="section-title">Популярные треки</h2>
             <TracksContainer>
-              {topTracks.slice(0, 10).map((track, index) => (
-                <div key={track.id || track.deezer_id} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+              {formattedTopTracks.map((track, index) => (
+                <div key={track.deezer_id} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                   <span className="index-num">{index + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}> 
                     <TrackItem 
-                      track={{ ...track, deezer_id: track.deezer_id || track.id }}
-                      isActive={currentTrack?.deezer_id === (track.deezer_id || track.id)}
+                      track={track}
+                      isActive={currentTrack?.deezer_id === track.deezer_id}
                       isPlaying={isPlaying}
-                      pendingData={pendingTracks[track.deezer_id || track.id]}
+                      pendingData={pendingTracks[track.deezer_id]}
                       now={now}
-                      onClick={onTrackSelect}
+                      // Передаем текущий трек и весь список популярных треков как новую очередь
+                      onClick={(t) => onTrackSelect(t, true, formattedTopTracks)}
                     />
                   </div>
                 </div>
@@ -125,7 +136,6 @@ const ArtistPage = ({
           overscroll-behavior-y: none;
         }
 
-        /* МИНИМАЛИСТИЧНЫЙ КРЕСТИК */
         .ui-close-btn-minimal {
           background: transparent;
           border: none;
@@ -135,20 +145,17 @@ const ArtistPage = ({
           display: flex;
           align-items: center;
           justify-content: center;
-          
           color: #ffffff;
           mix-blend-mode: difference;
           filter: brightness(1) contrast(100);
           transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
         }
 
-        /* Анимация появления */
         .btn-enter {
           animation: btnAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
           animation-delay: 0.2s;
         }
 
-        /* Анимация исчезновения */
         .btn-exit {
           opacity: 0;
           transform: scale(0.5) rotate(-45deg);
@@ -166,7 +173,6 @@ const ArtistPage = ({
           z-index: 1600;
         }
 
-        /* Эффект при нажатии */
         .ui-close-btn-minimal:active {
           transform: scale(0.8) rotate(90deg);
           opacity: 0.5;
@@ -176,7 +182,6 @@ const ArtistPage = ({
           .artist-close-pos { right: calc(50% - 375px); }
         }
 
-        /* Стили контента... */
         .artist-page-content { max-width: 800px; margin: 0 auto; padding-bottom: 120px; }
         .artist-banner { height: 420px; background-size: cover; background-position: center 20%; display: flex; align-items: flex-end; padding: 32px 24px; }
         .banner-content { display: flex; align-items: center; gap: 16px; width: 100%; }

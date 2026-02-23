@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X } from 'lucide-react'; 
 import axios from 'axios';
 import TrackItem, { TracksContainer } from './TrackItem';
@@ -27,6 +27,18 @@ const AlbumPage = ({
     fetchAlbumData();
   }, [albumId, backendBaseUrl]);
 
+  // Формируем список треков для очереди воспроизведения
+  // Используем useMemo, чтобы не пересчитывать массив при каждом рендере
+  const formattedTracks = useMemo(() => {
+    if (!album || !album.tracks?.data) return [];
+    return album.tracks.data.map(track => ({
+      ...track,
+      deezer_id: track.id,
+      artist: album.artist?.name, 
+      cover_url: album.cover_small || album.cover_medium
+    }));
+  }, [album]);
+
   const handleBackWithAnim = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -46,7 +58,6 @@ const AlbumPage = ({
   return (
     <div className={`album-page-root screen-overlay ${isClosing ? 'is-closing' : ''}`}>
       
-      {/* КНОПКА ЗАКРЫТИЯ (Только крестик с инверсией) */}
       <button 
         className="ui-close-btn-minimal album-close-pos" 
         onClick={handleBackWithAnim}
@@ -63,7 +74,6 @@ const AlbumPage = ({
               alt={album.title} 
               className="album-cover-main"
             />
-            {/* ТЕКСТ С ИНВЕРСИЕЙ (ЧЕРНЫЙ/БЕЛЫЙ) */}
             <div className="album-meta text-contrast-wrapper">
               <h1 className="album-title">{album.title}</h1>
               <p className="album-artist-name">{album.artist?.name}</p>
@@ -75,22 +85,18 @@ const AlbumPage = ({
 
           <div className="album-tracks-list">
             <TracksContainer>
-                {album.tracks?.data?.map((track, index) => (
+                {formattedTracks.map((track, index) => (
                 <div key={track.id} className="album-track-row">
                     <span className="album-index">{index + 1}</span>
                     <div className="album-track-wrapper">
                     <TrackItem 
-                        track={{
-                        ...track,
-                        deezer_id: track.id,
-                        artist: album.artist?.name, 
-                        cover_url: album.cover_small || album.cover_medium
-                        }}
+                        track={track}
                         isActive={currentTrack?.deezer_id === track.id}
                         isPlaying={isPlaying}
                         pendingData={pendingTracks[track.id]}
                         now={now}
-                        onClick={onTrackSelect}
+                        // Передаем сам трек и весь список альбома в качестве новой очереди
+                        onClick={(t) => onTrackSelect(t, true, formattedTracks)}
                     />
                     </div>
                 </div>
@@ -112,7 +118,6 @@ const AlbumPage = ({
           inset: 0;
         }
 
-        /* МИНИМАЛИСТИЧНЫЙ КРЕСТИК */
         .ui-close-btn-minimal {
           background: transparent;
           border: none;
@@ -123,8 +128,6 @@ const AlbumPage = ({
           align-items: center;
           justify-content: center;
           transition: transform 0.2s ease, opacity 0.2s ease;
-          
-          /* Инверсия, чтобы крестик был виден на любом фоне */
           color: #ffffff;
           mix-blend-mode: difference;
           filter: brightness(1) contrast(100);
@@ -177,7 +180,6 @@ const AlbumPage = ({
           object-fit: cover;
         }
 
-        /* МАГИЯ ИНВЕРСИИ ЦВЕТА */
         .text-contrast-wrapper {
           mix-blend-mode: difference;
           filter: brightness(1) contrast(100);

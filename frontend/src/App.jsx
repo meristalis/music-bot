@@ -62,8 +62,11 @@ function App() {
   const [downloadQueue, setDownloadQueue] = useState([]);
   const loadingTimersRef = useRef({});
 
-  // Инициализация плеера
-  const player = useAudioPlayer(library, (track) => handleTrackSelect(track));
+  // --- НОВОЕ: Состояние для текущей очереди треков ---
+  const [currentQueue, setCurrentQueue] = useState([]);
+
+  // Инициализация плеера (передаем currentQueue вместо library)
+  const player = useAudioPlayer(currentQueue, (track) => handleTrackSelect(track, true, currentQueue));
 
   const handleNextRef = useRef(player.handleNext);
   const handlePrevRef = useRef(player.handlePrev);
@@ -156,6 +159,8 @@ function App() {
         const data = Array.isArray(res.data) ? res.data : [];
         setLibrary(data);
         setFavoriteTrackIds(new Set(data.map(t => t.deezer_id)));
+        // Если очередь пустая (первый запуск), ставим библиотеку как очередь
+        setCurrentQueue(prev => prev.length === 0 ? data : prev);
       })
       .catch(() => setLibrary([]));
   }, [backendBaseUrl]);
@@ -211,77 +216,75 @@ function App() {
     finally { fetchLibrary(tgUser.id); }
   };
 
-
-
-// 1. Сначала объявляем requestTrack
-const requestTrack = useCallback(async (track, isRetry = false, autoPlay = true) => { // Убрана лишняя скобка
-  const trackId = track.deezer_id;
-  try {
-    const response = await axios.post(`${backendBaseUrl}/api/tracks/play`, track);
-    if (response.status === 200) {
-      if (isRetry) {
-        setPendingTracks(prev => ({ ...prev, [trackId]: { ...prev[trackId], isDone: true } }));
-        setTimeout(() => { 
-          clearLoadingState(trackId); 
-          fetchLibrary(tgUser.id); 
-        }, 1500);
-      } else {
-        clearLoadingState(trackId);
-        
-        player.setCurrentTrack({ 
-          ...track, 
-          play_link: response.data.play_link, 
-          track_id: response.data.track_id 
-        });
-
-        if (autoPlay) {
-          player.setIsPlaying(true); 
+  const requestTrack = useCallback(async (track, isRetry = false, autoPlay = true) => {
+    const trackId = track.deezer_id;
+    try {
+      const response = await axios.post(`${backendBaseUrl}/api/tracks/play`, track);
+      if (response.status === 200) {
+        if (isRetry) {
+          setPendingTracks(prev => ({ ...prev, [trackId]: { ...prev[trackId], isDone: true } }));
+          setTimeout(() => { 
+            clearLoadingState(trackId); 
+            fetchLibrary(tgUser.id); 
+          }, 1500);
         } else {
-          player.setIsPlaying(false); 
-        } 
+          clearLoadingState(trackId);
+          player.setCurrentTrack({ 
+            ...track, 
+            play_link: response.data.play_link, 
+            track_id: response.data.track_id 
+          });
+          if (autoPlay) {
+            player.setIsPlaying(true); 
+          } else {
+            player.setIsPlaying(false); 
+          } 
+        }
+      } else if (response.status === 202) {
+        setDownloadQueue(prev => prev.find(t => t.deezer_id === trackId) ? prev : [track, ...prev]);
+        setPendingTracks(prev => prev[trackId] ? prev : ({ 
+          ...prev, 
+          [trackId]: { finishTime: Date.now() + 15000, totalWait: 15000, isDone: false } 
+        }));
+        loadingTimersRef.current[trackId] = setTimeout(() => requestTrack(track, true), 5000);
       }
-    } else if (response.status === 202) {
-      setDownloadQueue(prev => prev.find(t => t.deezer_id === trackId) ? prev : [track, ...prev]);
-      setPendingTracks(prev => prev[trackId] ? prev : ({ 
-        ...prev, 
-        [trackId]: { finishTime: Date.now() + 15000, totalWait: 15000, isDone: false } 
-      }));
-      loadingTimersRef.current[trackId] = setTimeout(() => requestTrack(track, true), 5000);
+    } catch (err) { 
+      clearLoadingState(trackId); 
     }
-  } catch (err) { 
-    clearLoadingState(trackId); 
-  }
-}, [backendBaseUrl, tgUser, player, fetchLibrary]);
+  }, [backendBaseUrl, tgUser, player, fetchLibrary]);
 
+  // --- ИСПРАВЛЕННЫЙ handleTrackSelect ---
+  // Теперь принимает третий аргумент - список треков, из которого был запущен текущий трек
+  const handleTrackSelect = useCallback(async (track, autoPlay = true, newQueue = null) => {
+    if (!track) return;
+    
+    player.prepareAudio();
 
-const handleTrackSelect = useCallback(async (track, autoPlay = true) => {
-  if (!track) return;
-  
-  player.prepareAudio();
-  const isSameTrack = player.currentTrack?.deezer_id === track.deezer_id;
+    // Если передан новый список (например, из поиска или альбома), обновляем текущую очередь в App
+    if (newQueue && Array.isArray(newQueue)) {
+      setCurrentQueue(newQueue);
+    }
 
-  if (isSameTrack) {
-    player.togglePlay();
-    return;
-  }
+    const isSameTrack = player.currentTrack?.deezer_id === track.deezer_id;
+    if (isSameTrack) {
+      player.togglePlay();
+      return;
+    }
 
-  if (pendingTracks[track.deezer_id]) return;
-
-  await requestTrack(track, false, autoPlay); // Убрана лишняя точка с запятой
-}, [
-  player.currentTrack?.deezer_id, 
-  player.togglePlay,
-  pendingTracks, 
-  requestTrack,
-  player.prepareAudio
-]);
+    if (pendingTracks[track.deezer_id]) return;
+    await requestTrack(track, false, autoPlay);
+  }, [
+    player.currentTrack?.deezer_id, 
+    player.togglePlay,
+    pendingTracks, 
+    requestTrack,
+    player.prepareAudio
+  ]);
 
   const clearLoadingState = (trackId) => {
     setPendingTracks(prev => { const newState = { ...prev }; delete newState[trackId]; return newState; });
     if (loadingTimersRef.current[trackId]) { clearTimeout(loadingTimersRef.current[trackId]); delete loadingTimersRef.current[trackId]; }
   };
-
-
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -360,8 +363,6 @@ const handleTrackSelect = useCallback(async (track, autoPlay = true) => {
         backendBaseUrl={backendBaseUrl}
       />
 
-      
-
       <div>
         <TracksContainer maxHeight={"calc(88vh)"}>
         {isDownloadPanelOpen && (
@@ -373,17 +374,15 @@ const handleTrackSelect = useCallback(async (track, autoPlay = true) => {
           <TracksContainer>
             {downloadQueue.map(track => (
               <TrackItem 
-  key={`q-${track.deezer_id}`} 
-  track={track} 
-  isFromQueue={true} 
-  // Трек подсвечен, если он в плеере
-  isActive={player.currentTrack?.deezer_id === track.deezer_id} 
-  // Иконка паузы только если он активен И играет
-  isPlaying={player.currentTrack?.deezer_id === track.deezer_id && player.isPlaying}
-  pendingData={pendingTracks[track.deezer_id]} 
-  now={now} 
-  onClick={handleTrackSelect} 
-/>
+                key={`q-${track.deezer_id}`} 
+                track={track} 
+                isFromQueue={true} 
+                isActive={player.currentTrack?.deezer_id === track.deezer_id} 
+                isPlaying={player.currentTrack?.deezer_id === track.deezer_id && player.isPlaying}
+                pendingData={pendingTracks[track.deezer_id]} 
+                now={now} 
+                onClick={(t) => handleTrackSelect(t, true, downloadQueue)} 
+              />
             ))}
           </TracksContainer>
         </div>
@@ -400,7 +399,15 @@ const handleTrackSelect = useCallback(async (track, autoPlay = true) => {
             )}
 
             {(isSearchOpen ? searchResults : library).map(track => (
-              <TrackItem key={`lib-${track.deezer_id}`} track={track} isActive={player.currentTrack?.deezer_id === track.deezer_id} isPlaying={player.isPlaying} pendingData={pendingTracks[track.deezer_id]} now={now} onClick={handleTrackSelect} />
+              <TrackItem 
+                key={`lib-${track.deezer_id}`} 
+                track={track} 
+                isActive={player.currentTrack?.deezer_id === track.deezer_id} 
+                isPlaying={player.isPlaying} 
+                pendingData={pendingTracks[track.deezer_id]} 
+                now={now} 
+                onClick={(t) => handleTrackSelect(t, true, isSearchOpen ? searchResults : library)} 
+              />
             ))}
 
             {!isSearchOpen && library.length === 0 && (
@@ -411,40 +418,58 @@ const handleTrackSelect = useCallback(async (track, autoPlay = true) => {
         </TracksContainer>
 
         {activeArtistId && (
-          <ArtistPage artistId={activeArtistId} onAlbumClick={setActiveAlbumId} backendBaseUrl={backendBaseUrl} onBack={() => setActiveArtistId(null)} onTrackSelect={handleTrackSelect} currentTrack={player.currentTrack} isPlaying={player.isPlaying} pendingTracks={pendingTracks} now={now} />
+          <ArtistPage 
+            artistId={activeArtistId} 
+            onAlbumClick={setActiveAlbumId} 
+            backendBaseUrl={backendBaseUrl} 
+            onBack={() => setActiveArtistId(null)} 
+            onTrackSelect={handleTrackSelect} // AlbumPage/ArtistPage внутри вызовут handleTrackSelect с нужным списком
+            currentTrack={player.currentTrack} 
+            isPlaying={player.isPlaying} 
+            pendingTracks={pendingTracks} 
+            now={now} 
+          />
         )}
         {activeAlbumId && (
-          <AlbumPage albumId={activeAlbumId} onBack={() => setActiveAlbumId(null)} backendBaseUrl={backendBaseUrl} onTrackSelect={handleTrackSelect} currentTrack={player.currentTrack} isPlaying={player.isPlaying} pendingTracks={pendingTracks} now={now} />
+          <AlbumPage 
+            albumId={activeAlbumId} 
+            onBack={() => setActiveAlbumId(null)} 
+            backendBaseUrl={backendBaseUrl} 
+            onTrackSelect={handleTrackSelect} 
+            currentTrack={player.currentTrack} 
+            isPlaying={player.isPlaying} 
+            pendingTracks={pendingTracks} 
+            now={now} 
+          />
         )}
       </div>
 
       {player.currentTrack && (
-  <FullPlayer 
-    {...player} 
-    isOpen={isFullPlayerOpen} // Исправлено имя переменной!
-    onClose={() => setIsFullPlayerOpen(false)} 
-    formatTime={formatTime} 
-    handleLike={handleLike} 
-    favoriteTrackIds={favoriteTrackIds} 
-    onArtistClick={(id) => {
-      setActiveArtistId(id);
-      setIsFullPlayerOpen(false); // Закрываем плеер при переходе к артисту
-    }} 
-    backendBaseUrl={backendBaseUrl}
-  />
-)}
+        <FullPlayer 
+          {...player} 
+          isOpen={isFullPlayerOpen}
+          onClose={() => setIsFullPlayerOpen(false)} 
+          formatTime={formatTime} 
+          handleLike={handleLike} 
+          favoriteTrackIds={favoriteTrackIds} 
+          onArtistClick={(id) => {
+            setActiveArtistId(id);
+            setIsFullPlayerOpen(false);
+          }} 
+          backendBaseUrl={backendBaseUrl}
+        />
+      )}
 
-{/* Мини-плеер (AudioPlayer) */}
-<AudioPlayer 
-  {...player} 
-  isMobile={isMobile} 
-  isFullPlayerOpen={isFullPlayerOpen} 
-  setIsFullPlayerOpen={setIsFullPlayerOpen} 
-  formatTime={formatTime} 
-  handleLike={handleLike} 
-  favoriteTrackIds={favoriteTrackIds} 
-  backendBaseUrl={backendBaseUrl} 
-/>
+      <AudioPlayer 
+        {...player} 
+        isMobile={isMobile} 
+        isFullPlayerOpen={isFullPlayerOpen} 
+        setIsFullPlayerOpen={setIsFullPlayerOpen} 
+        formatTime={formatTime} 
+        handleLike={handleLike} 
+        favoriteTrackIds={favoriteTrackIds} 
+        backendBaseUrl={backendBaseUrl} 
+      />
     </div>
   );
 }
