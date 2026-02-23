@@ -23,21 +23,16 @@ const AudioPlayer = ({
   formatTime,
   backendBaseUrl,
 }) => {
-  // --- ЛОКАЛЬНАЯ СИНХРОНИЗАЦИЯ (Сердце плеера) ---
   const [localIsPlaying, setLocalIsPlaying] = useState(isPlayingProp);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
     const syncState = () => setLocalIsPlaying(!audio.paused);
-
     audio.addEventListener('play', syncState);
     audio.addEventListener('pause', syncState);
     audio.addEventListener('playing', syncState);
-
     setLocalIsPlaying(!audio.paused);
-
     return () => {
       audio.removeEventListener('play', syncState);
       audio.removeEventListener('pause', syncState);
@@ -51,7 +46,6 @@ const AudioPlayer = ({
 
   if (!currentTrack) return null;
 
-  // Универсальный обработчик клика по Play/Pause
   const handleToggle = (e) => {
     e.stopPropagation();
     togglePlay();
@@ -59,7 +53,7 @@ const AudioPlayer = ({
   };
 
   const renderProgress = (progress) => (
-    <div style={{ height: '100%', width: `${progress * 100}%`, background: 'var(--text-primary)', transition: 'width 0.1s linear' }} />
+    <div style={{ height: '100%', width: `${progress * 100}%`, background: 'var(--accent-color)', transition: 'width 0.1s linear' }} />
   );
 
   return (
@@ -70,6 +64,7 @@ const AudioPlayer = ({
         playsInline
         preload="auto"
         autoPlay
+        onCanPlay={(e) => { e.currentTarget.volume = volume; }}
         onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
         onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
         onEnded={handleNext}
@@ -80,30 +75,66 @@ const AudioPlayer = ({
           from { transform: translateY(100px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
-        .animate-player { animation: slideUpPlayer 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; will-change: transform; }
+        .animate-player { animation: slideUpPlayer 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         .loader-spin { animation: spin 2s linear infinite; display: flex; align-items: center; justify-content: center; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
-        /* Стили для ползунков (Input Range) */
-        .player-range { 
-          appearance: none; 
-          -webkit-appearance: none;
-          outline: none; 
-          border-radius: 2px;
-          height: 4px;
-        }
-        .player-range::-webkit-slider-thumb { 
-          appearance: none; 
-          -webkit-appearance: none;
-          width: 12px; 
-          height: 12px; 
-          background: var(--text-primary); 
-          border-radius: 50%; 
+        /* ТЕ ЖЕ СТИЛИ ПОЛЗУНКА, ЧТО В FULL PLAYER */
+        .progress-wrapper {
+          padding: 10px 0;
+          width: 100%;
           cursor: pointer;
-          border: none;
-          box-shadow: 0 0 5px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
         }
-        
+
+        .track-slider {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 100%;
+          height: 4px;
+          border-radius: 10px;
+          outline: none;
+          background: transparent;
+          transition: height 0.2s ease;
+          cursor: pointer;
+        }
+
+        .progress-wrapper:hover .track-slider { height: 6px; }
+
+        .track-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 20px;
+          height: 80px; /* Высокая невидимая область для десктопа/мобилки */
+          background: black;
+          border-radius: 50%;
+          cursor: pointer;
+          opacity: 0.01;
+        }
+
+        .track-slider::-moz-range-thumb {
+          width: 20px; height: 80px;
+          background: black; border-radius: 50%; border: none;
+          cursor: pointer; opacity: 0.01;
+        }
+
+        /* Громкость (более аккуратная) */
+        .volume-slider {
+          -webkit-appearance: none;
+          width: 80px;
+          height: 3px;
+          background: rgba(255,255,255,0.1);
+          border-radius: 2px;
+          outline: none;
+        }
+        .volume-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 10px; height: 10px;
+          background: var(--text-primary);
+          border-radius: 50%; cursor: pointer;
+        }
+
         .icon-hover:hover { opacity: 0.8; transform: scale(1.05); }
         .icon-hover:active { transform: scale(0.95); }
       `}</style>
@@ -116,7 +147,6 @@ const AudioPlayer = ({
               <div style={styles.mobileProgressBar}>
                 {renderProgress(currentTime / (duration || 1))}
               </div>
-
               <div onClick={() => setIsFullPlayerOpen(true)} style={styles.mobileTrackInfo}>
                 <img src={currentTrack.cover_url} style={styles.mobileCover} alt="" />
                 <div style={{ minWidth: 0 }}>
@@ -126,7 +156,6 @@ const AudioPlayer = ({
                   </div>
                 </div>
               </div>
-
               <div style={styles.mobileControls}>
                 <SkipBack className="icon-hover" size={22} fill="currentColor" onClick={(e) => { e.stopPropagation(); handlePrev(); }} style={styles.icon} />
                 <div onClick={handleToggle} className="icon-hover" style={styles.icon}>
@@ -141,7 +170,6 @@ const AudioPlayer = ({
             /* --- DESKTOP VIEW --- */
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '24px' }}>
               
-              {/* Левая часть: Инфо */}
               <div onClick={() => setIsFullPlayerOpen(true)} style={styles.desktopTrackInfo}>
                 <img src={currentTrack.cover_url} style={styles.desktopCover} alt="" />
                 <div style={{ minWidth: 0 }}>
@@ -152,57 +180,53 @@ const AudioPlayer = ({
                 </div>
               </div>
 
-              {/* Центральная часть: Управление */}
               <div style={styles.desktopMainControls}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                   <SkipBack className="icon-hover" size={20} fill="currentColor" onClick={handlePrev} style={styles.icon} />
                   <div onClick={handleToggle} className="icon-hover" style={styles.icon}>
                     {loadingTrackId === currentTrack?.deezer_id ? (
                       <div className="loader-spin"><AlignCenter size={24} /></div>
-                    ) : localIsPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
+                    ) : localIsPlaying ? <Pause size={30} fill="currentColor" /> : <Play size={30} fill="currentColor" />}
                   </div>
                   <SkipForward className="icon-hover" size={20} fill="currentColor" onClick={handleNext} style={styles.icon} />
                 </div>
 
-                <div style={styles.desktopProgressRow}>
+                <div className="progress-wrapper">
                   <span style={styles.timeLabel}>{formatTime(currentTime)}</span>
                   <input
                     type="range" min="0" max={duration || 0} value={currentTime}
-                    className="player-range"
+                    className="track-slider"
                     onChange={(e) => {
                       const val = Number(e.target.value);
                       if (audioRef.current) audioRef.current.currentTime = val;
                       setCurrentTime(val);
                     }}
                     style={{
-                      ...styles.desktopRange,
-                      background: `linear-gradient(to right, var(--text-primary) ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.1) ${(currentTime / (duration || 1)) * 100}%)`
+                      background: `linear-gradient(to right, 
+                        var(--accent-color) 0%, 
+                        var(--accent-color) ${(currentTime / (duration || 1)) * 100}%, 
+                        rgba(255, 255, 255, 0.1) ${(currentTime / (duration || 1)) * 100}%, 
+                        rgba(255, 255, 255, 0.1) 100%)`
                     }}
                   />
                   <span style={styles.timeLabel}>{formatTime(duration)}</span>
                 </div>
               </div>
 
-              {/* Правая часть: Доп. управление */}
               <div style={styles.desktopSideControls}>
                 <Heart
                   className="icon-hover"
                   size={20} onClick={() => handleLike(currentTrack)}
                   fill={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "none"}
-                  color={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "var(--text-primary)"}
+                  stroke={favoriteTrackIds.has(currentTrack.deezer_id) ? "var(--accent-color)" : "currentColor"}
                   style={styles.icon}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                    <input
                     type="range" min="0" max="1" step="0.01" value={volume}
-                    className="player-range"
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      setVolume(val);
-                      if (audioRef.current) audioRef.current.volume = val;
-                    }}
+                    className="volume-slider"
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
                     style={{
-                      ...styles.volumeRange,
                       background: `linear-gradient(to right, var(--text-primary) ${volume * 100}%, rgba(255,255,255,0.1) ${volume * 100}%)`
                     }}
                   />
@@ -215,8 +239,9 @@ const AudioPlayer = ({
     </>
   );
 };
+
 const styles = {
-  icon: { cursor: 'pointer' },
+  icon: { cursor: 'pointer', transition: 'all 0.2s' },
   mobileContainer: {
     position: 'fixed', bottom: '6px', left: '6px', right: '6px',
     background: 'var(--bg-surface)', borderRadius: '12px', padding: '8px 12px',
@@ -226,28 +251,25 @@ const styles = {
   },
   mobileProgressBar: { position: 'absolute', top: 0, left: '0', right: '0', height: '2px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden', borderRadius: '12px 12px 0 0' },
   mobileTrackInfo: { display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, cursor: 'pointer' },
-  mobileCover: { width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', marginTop: '4px' },
+  mobileCover: { width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover' },
   mobileTitle: { fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)' },
   mobileArtist: { fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   mobileControls: { display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '10px', color: 'var(--text-primary)' },
   
   desktopContainer: {
     position: 'fixed', bottom: '6px', left: '6px', right: '6px',
-    background: 'var(--bg-surface)', borderRadius: '12px', padding: '12px 16px',
+    background: 'var(--bg-surface)', borderRadius: '12px', padding: '10px 20px',
     boxShadow: '0 8px 30px rgba(0,0,0,0.5)', zIndex: 10000,
     border: '1px solid rgba(255,255,255,0.05)',
     color: 'var(--text-primary)'
   },
-  desktopTrackInfo: { display: 'flex', alignItems: 'center', gap: '12px', flex: '0 1 25%', cursor: 'pointer' },
-  desktopCover: { width: '45px', height: '45px', borderRadius: '5px', flexShrink: 0 },
+  desktopTrackInfo: { display: 'flex', alignItems: 'center', gap: '12px', flex: '0 1 25%', cursor: 'pointer', minWidth: 0 },
+  desktopCover: { width: '48px', height: '48px', borderRadius: '6px', flexShrink: 0, objectFit: 'cover' },
   desktopTitle: { fontWeight: '600', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   desktopArtist: { fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  desktopMainControls: { flex: '1 1 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', maxWidth: '600px' },
-  desktopProgressRow: { width: '100%', display: 'flex', alignItems: 'center', gap: '10px' },
-  timeLabel: { fontSize: '12px', color: 'var(--text-secondary)', minWidth: '35px' },
-  desktopRange: { flex: 1, height: '4px', cursor: 'pointer', appearance: 'none', outline: 'none', borderRadius: '2px' },
-  desktopSideControls: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px', flex: '0 1 25%' },
-  volumeRange: { width: '60px', height: '3px', appearance: 'none', outline: 'none', cursor: 'pointer' }
+  desktopMainControls: { flex: '1 1 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', maxWidth: '600px' },
+  timeLabel: { fontSize: '11px', color: 'var(--text-secondary)', minWidth: '35px', textAlign: 'center' },
+  desktopSideControls: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px', flex: '0 1 25%' }
 };
 
 export default AudioPlayer;

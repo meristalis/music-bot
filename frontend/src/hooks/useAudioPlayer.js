@@ -4,7 +4,10 @@ export const useAudioPlayer = (library, handleTrackSelect) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.8);
+  const [volume, setVolume] = useState(() => {
+  const saved = localStorage.getItem('player_volume');
+  return saved !== null ? parseFloat(saved) : 0.5;
+});
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState('none');
   const [currentTrack, setCurrentTrack] = useState(null);
@@ -42,13 +45,16 @@ export const useAudioPlayer = (library, handleTrackSelect) => {
       audio.pause();
     }
   }, []);
-
+  useEffect(() => {
+  localStorage.setItem('player_volume', volume.toString());
+}, [volume]);
   // --- 3. Синхронизация состояния через нативные события ---
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const onPlay = () => {
+      audio.volume = volume;
       setIsPlaying(true);
     };
 

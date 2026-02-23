@@ -58,6 +58,7 @@ const LyricsView = ({ currentTrack, currentTime, audioRef, isActive, onSwipeDown
     fetchLyrics();
   }, [currentTrack]);
 
+  
   const activeIndex = useMemo(() => {
     if (!isSynced) return -1;
     return lyrics.reduce((acc, line, index) => (currentTime >= line.time ? index : acc), -1);
@@ -128,11 +129,11 @@ const FullPlayer = ({
   currentTime, setCurrentTime, duration, formatTime,
   audioRef, handleNext, handlePrev, isShuffle, setIsShuffle,
   repeatMode, toggleRepeat, handleLike, favoriteTrackIds, onArtistClick,
-  backendBaseUrl
+  backendBaseUrl,
+  volume, setVolume // ПОЛУЧАЕМ ИЗ ПРОПСОВ
 }) => {
   const [localIsPlaying, setLocalIsPlaying] = useState(isPlayingProp);
   const [showLyrics, setShowLyrics] = useState(false);
-  const [volume, setVolume] = useState(1);
   const [showVolumeBar, setShowVolumeBar] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   
@@ -143,7 +144,18 @@ const FullPlayer = ({
   const volumeContainerRef = useRef(null);
   const touchStartRef = useRef({ x: 0, y: 0 });
   const lastVolumeUpdateRef = useRef(0);
+  const [isHeartAnimating, setIsHeartAnimating] = useState(false);
+const onLikeClick = (e) => {
+  e.stopPropagation();
+  
+  // Если сейчас трек НЕ лайкнут, значит после клика он добавится
+  if (!isLiked) {
+    setIsHeartAnimating(true);
+    setTimeout(() => setIsHeartAnimating(false), 200);
+  }
 
+  handleLike(currentTrack);
+};
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -181,17 +193,11 @@ const FullPlayer = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showVolumeBar]);
 
-  const handleVolumeChange = (e) => {
+const handleVolumeChange = (e) => {
     const newVol = parseFloat(e.target.value);
-    const now = Date.now();
-    setVolume(newVol);
-    if (now - lastVolumeUpdateRef.current > 50) {
-      if (audioRef.current) audioRef.current.volume = newVol;
-      lastVolumeUpdateRef.current = now;
-    }
+    setVolume(newVol); // Теперь это меняет стейт в хуке useAudioPlayer
     resetVolumeTimer();
   };
-
   const handleCloseWithAnim = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -315,11 +321,6 @@ const FullPlayer = ({
   }
   .header-btn:active { transform: scale(0.9); }
 
-  .progress-wrapper {
-    padding: 12px 0;
-    width: 100%;
-    cursor: pointer;
-  }
 
   .track-slider {
     -webkit-appearance: none;
@@ -338,8 +339,8 @@ const FullPlayer = ({
   .track-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 100px;
+    height: 100px;
     background: black;
     border-radius: 50%;
     cursor: pointer;
@@ -347,8 +348,8 @@ const FullPlayer = ({
   }
 
   .track-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
+    width: 100px;
+    height: 100px;
     background: black;
     border-radius: 50%;
     border: none;
@@ -375,7 +376,7 @@ const FullPlayer = ({
 
   .ios-volume-input {
     position: absolute; top: 0; left: 0; width: 140px; height: 36px;
-    appearance: none; -webkit-appearance: none; background: transparent;
+    appearance: none; -webkit-appearance: none; background: white; opacity: 0.01;
     transform: rotate(-90deg) translateX(-140px); transform-origin: top left;
     cursor: pointer; margin: 0; z-index: 5; outline: none;
   }
@@ -553,20 +554,24 @@ const FullPlayer = ({
                 </p>
               </div>
               <div className="icon-center" style={{ width: 42, height: 42 }}>
-                <Heart
-                  size={32}
-                  onClick={() => handleLike(currentTrack)}
-                  fill={isLiked ? "var(--accent-color)" : "none"}
-                  stroke={isLiked ? "var(--accent-color)" : "var(--text-primary)"}
-                  strokeWidth={2}
-                  style={{ cursor: 'pointer', opacity: isLiked ? 1 : 0.8, transition: 'all 0.3s ease' }}
-                />
-              </div>
+ <Heart
+  size={32}
+  onClick={onLikeClick} // Используем обертку с анимацией
+  className={`heart-icon-animated ${isHeartAnimating ? 'heart-bounce' : ''}`}
+  fill={isLiked ? "var(--accent-color)" : "none"}
+  stroke={isLiked ? "var(--accent-color)" : "var(--text-primary)"}
+  strokeWidth={2.5}
+  style={{ cursor: 'pointer', opacity: isLiked ? 1 : 0.8, transition: 'all 0.3s ease' }}
+/>
+</div>
             </div>
         </div>
 
         <div style={styles.bottomArea}>
           <div style={styles.progressWrapper} className="progress-wrapper">
+            <div style={styles.timeInfo}>
+              <span>{formatTime(currentTime)}</span>
+              </div>
             <input
               type="range" min="0" max={duration || 0} value={currentTime} step="1" className="track-slider"
               onInput={(e) => setCurrentTime(Number(e.target.value))}
@@ -584,7 +589,6 @@ const FullPlayer = ({
               }}
             />
             <div style={styles.timeInfo}>
-              <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
           </div>
@@ -640,7 +644,7 @@ const FullPlayer = ({
 
 const styles = {
   overlay: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-color)', zIndex: 2000, padding: '1.5vh 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden'
+    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-color)', zIndex: 2000, padding: '1vh 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden'
   },
   headerRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 2001, padding: '15px 10px',
@@ -677,11 +681,10 @@ const styles = {
   },
   title: { fontSize: 'clamp(22px, 6vw, 28px)', fontWeight: '800', color: 'var(--text-primary)', margin: '0 0 4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   artist: { fontSize: 'clamp(16px, 4.5vw, 20px)', color: 'var(--text-secondary)', margin: 0, opacity: 0.8 },
-  bottomArea: { padding: '1vh 0 4vh 0', flexShrink: 0 },
-  progressWrapper: { width: '100%', marginBottom: '2vh' },
-  timeInfo: { display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '500' },
+  progressWrapper: { width: '100%',margin: '3vh auto', },
+  timeInfo: { display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: 'var(--text-secondary)', fontWeight: '500', padding: '0px 6px',},
   mainControlsRow: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%'
+    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', marginBottom: '5vh'
   },
   controlsWrapper: { 
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%'

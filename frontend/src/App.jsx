@@ -109,7 +109,7 @@ function App() {
   }, [player.currentTrack, player.isPlaying, player.duration]);
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 100);
+    const interval = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(interval);
   }, []);
 
@@ -446,30 +446,30 @@ function App() {
 
       {player.currentTrack && (
         <FullPlayer 
-          {...player} 
-          isOpen={isFullPlayerOpen}
-          onClose={() => setIsFullPlayerOpen(false)} 
-          formatTime={formatTime} 
-          handleLike={handleLike} 
-          favoriteTrackIds={favoriteTrackIds} 
-          onArtistClick={(id) => {
-            setActiveArtistId(id);
-            setIsFullPlayerOpen(false);
-          }} 
-          backendBaseUrl={backendBaseUrl}
-        />
+    {...player}         
+    isOpen={isFullPlayerOpen}
+    onClose={() => setIsFullPlayerOpen(false)} 
+    formatTime={formatTime} 
+    handleLike={handleLike} 
+    favoriteTrackIds={favoriteTrackIds} 
+    onArtistClick={(id) => {
+      setActiveArtistId(id);
+      setIsFullPlayerOpen(false);
+    }} 
+    backendBaseUrl={backendBaseUrl}
+  />
       )}
 
       <AudioPlayer 
-        {...player} 
-        isMobile={isMobile} 
-        isFullPlayerOpen={isFullPlayerOpen} 
-        setIsFullPlayerOpen={setIsFullPlayerOpen} 
-        formatTime={formatTime} 
-        handleLike={handleLike} 
-        favoriteTrackIds={favoriteTrackIds} 
-        backendBaseUrl={backendBaseUrl} 
-      />
+  {...player}             // Это тоже содержит и volume, и setVolume внутри
+  isMobile={isMobile} 
+  isFullPlayerOpen={isFullPlayerOpen} 
+  setIsFullPlayerOpen={setIsFullPlayerOpen} 
+  formatTime={formatTime} 
+  handleLike={handleLike} 
+  favoriteTrackIds={favoriteTrackIds} 
+  backendBaseUrl={backendBaseUrl}
+/>
     </div>
   );
 }

@@ -195,3 +195,17 @@ audio::-webkit-media-controls {
   transform: scale(0.9);
   opacity: 0.6;
 }
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  15% { transform: scale(1.4); }
+  30% { transform: scale(0.9); }
+  45% { transform: scale(1.15); }
+  60% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.heart-icon-animated {
+  cursor: pointer;
+  transition: fill 0.5s ease;
+  will-change: transform;
+}
