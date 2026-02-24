@@ -45,8 +45,6 @@ func (h *BotHandler) Start(ctx context.Context) {
 				continue
 			}
 
-			// Для каждой обработки создаем свой контекст с таймаутом,
-			// чтобы один зависший запрос не вешал всё приложение.
 			handleCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 
 			if update.Message.Audio != nil {
@@ -108,35 +106,31 @@ func (h *BotHandler) handleAudio(ctx context.Context, msg *tgbotapi.Message) {
 }
 
 func (h *BotHandler) handleStart(msg *tgbotapi.Message) {
-	// 1. Сохраняем или обновляем пользователя в базе
 	user := &domain.User{
 		ID:        msg.From.ID,
 		FirstName: msg.From.FirstName,
 		Username:  msg.From.UserName,
 	}
 
-	// Контекст обычно берется фоновый для операций в боте
-	ctx := context.Background()
-	err := h.userUc.UpsertUser(ctx, user)
-	if err != nil {
-		log.Printf("Ошибка при регистрации пользователя %d: %v", msg.From.ID, err)
-		// Не блокируем работу бота, если база прилегла, но логируем
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := h.userUc.UpsertUser(ctx, user); err != nil {
+		log.Printf("Ошибка регистрации: %v", err)
 	}
 
-	// 2. Формируем текст сообщения
+	// Используем MarkdownV2 для красивого отображения ID
+	// Обратите внимание на экранирование спецсимволов, если используете MarkdownV2
 	txt := fmt.Sprintf(
-		"Привет, %s!\n\n"+
-			"Твой Chat ID: `%d` (нажми, чтобы скопировать)\n\n"+
-			"Жми на кнопку ниже, чтобы открыть свою медиатеку.",
+		"Привет, *%s*\\!\n\n"+
+			"Твой ID: `%d` для версии в браузере\n\n"+
+			"Отправь мне аудиофайл, чтобы добавить его в плеер\\.",
 		msg.From.FirstName,
-		msg.From.ID, // Используем ID отправителя
+		msg.From.ID,
 	)
 
 	reply := tgbotapi.NewMessage(msg.Chat.ID, txt)
-	reply.ParseMode = "Markdown"
-
-	// Добавим кнопку открытия Mini App (если она у тебя настроена)
-	// reply.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(...)
+	reply.ParseMode = "MarkdownV2"
 
 	h.bot.Send(reply)
 }
