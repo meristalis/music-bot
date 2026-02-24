@@ -72,6 +72,15 @@ function App() {
   const handlePrevRef = useRef(player.handlePrev);
   const togglePlayRef = useRef(player.togglePlay);
 
+  const tg = window.Telegram.WebApp;
+
+    document.getElementById('playBtn').addEventListener('click', function() {
+        // Этот метод открывает ссылку во встроенном плеере мессенджера
+        tg.openLink('https://www.youtube.com/watch?v=QYh6mYIJG2Y', {
+            try_instant_view: true // Пытается открыть видео максимально быстро
+        });
+    });
+
   useEffect(() => {
     handleNextRef.current = player.handleNext;
     handlePrevRef.current = player.handlePrev;
@@ -349,7 +358,7 @@ function App() {
           </div>
         </div>
       )}
-      
+      <button id="playBtn">Смотреть клип Ariana Grande</button>
       <Header 
         tgUser={tgUser}
         isDownloadPanelOpen={isDownloadPanelOpen}
